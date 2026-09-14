@@ -7,9 +7,9 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconClock,
+  IconDocument,
   IconGauge,
   IconLock,
-  IconTable,
 } from '../../components/Icons'
 import { CONFIG } from '../../lib/config'
 import { SUMBER, getArea } from '../../lib/curriculum'
@@ -420,7 +420,7 @@ export default function Dashboard() {
           </p>
         </div>
         <Link href="/mahasiswa/transkrip" className="btn-primary rounded-2xl px-5 py-3">
-          <IconTable size={18} />
+          <IconDocument size={18} />
           Open Transcript
         </Link>
       </header>
@@ -468,7 +468,7 @@ export default function Dashboard() {
             ubin kembali menjadi anggota grid induknya seperti biasa. Di ponsel
             ia tersembunyi sampai tombol Rincian ditekan. */}
         <div id="ubin-rinci" className={(rinciBuka ? 'grid' : 'hidden') + ' gap-4 sm:contents'}>
-          <Ubin ikon={IconTable} judul="Aspek dinilai">
+          <Ubin ikon={IconDocument} judul="Aspek dinilai">
             <p className="text-[32px] font-extrabold leading-none tracking-tight text-ink">
               {akhir.aspekDinilai}
               <span className="text-[18px] font-bold text-ink-3"> / {akhir.aspekTotal}</span>

@@ -256,7 +256,7 @@ function buatMahasiswa({ program, faculty, jenjang, angkatan, nama, id, basis, o
     String(angkatan.angkatan).slice(2) + String(110 + (seq % 60)) + String(1000 + seq).slice(-4)
 
   return {
-    id: id ?? 'S' + String(seq).padStart(4, '0'),
+    id: id ?? 'S' + String(seq).padStart(11, '0'),
     nim,
     name: depan + ' ' + belakang,
     email: buatEmail(depan, belakang, email),

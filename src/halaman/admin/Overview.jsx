@@ -6,8 +6,8 @@ import {
   IconBuilding,
   IconCertificate,
   IconChevronRight,
+  IconDocument,
   IconList,
-  IconTable,
   IconUpload,
   IconUsers,
 } from '../../components/Icons'
@@ -283,7 +283,7 @@ export default function Overview() {
           />
           <Pintu
             ke="/admin/kurikulum"
-            icon={IconTable}
+            icon={IconDocument}
             judul="Kurikulum CPMK"
             keterangan="Sepuluh aspek penilaian, komponen asesmen, dan bobotnya."
           />

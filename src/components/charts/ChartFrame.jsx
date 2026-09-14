@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { IconTable } from '../Icons'
+import { IconDocument } from '../Icons'
 import { Pill } from '../Ui'
 
 /* Bingkai bersama untuk setiap grafik: judul, legenda, dan tampilan tabel.
@@ -37,7 +37,7 @@ export default function ChartFrame({
                   : 'border-line text-ink-2 hover:bg-surface-2')
               }
             >
-              <IconTable size={14} />
+              <IconDocument size={14} />
               Tabel
             </button>
           ) : null}

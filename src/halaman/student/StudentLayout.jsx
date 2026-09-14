@@ -7,6 +7,7 @@ import Laci from '../../components/Laci'
 import MenuAkun from '../../components/MenuAkun'
 import {
   IconCertificate,
+  IconDocument,
   IconGauge,
   IconList,
   IconLogo,
@@ -14,7 +15,6 @@ import {
   IconMoon,
   IconRoute,
   IconSun,
-  IconTable,
 } from '../../components/Icons'
 import { getStudent, personaAktif, transkripOf } from '../../lib/mockData'
 import { useStore } from '../../lib/store'
@@ -46,7 +46,7 @@ import LoncengBelumDinilai from './LoncengBelumDinilai'
 
 /* Pintasan footer menunjuk ke halaman yang memang ada, bukan tautan hiasan. */
 const PINTASAN = [
-  { ke: '/mahasiswa/transkrip', label: 'Transcript', icon: IconTable },
+  { ke: '/mahasiswa/transkrip', label: 'Transcript', icon: IconDocument },
   { ke: '/mahasiswa/peta', label: 'Road Map', icon: IconRoute },
   { ke: '/mahasiswa/riwayat', label: 'History', icon: IconList },
   { ke: '/mahasiswa/sertifikat', label: 'Sertificate', icon: IconCertificate },
@@ -54,7 +54,7 @@ const PINTASAN = [
 
 const MENU = [
   { to: '/mahasiswa', label: 'Dashboard', icon: IconGauge, end: true },
-  { to: '/mahasiswa/transkrip', label: 'Transcript', icon: IconTable },
+  { to: '/mahasiswa/transkrip', label: 'Transcript', icon: IconDocument },
   { to: '/mahasiswa/peta', label: 'Road Map', icon: IconRoute },
   { to: '/mahasiswa/riwayat', label: 'History', icon: IconList },
   { to: '/mahasiswa/sertifikat', label: 'Certificate', icon: IconCertificate },
