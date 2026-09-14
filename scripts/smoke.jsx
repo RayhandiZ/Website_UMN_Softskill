@@ -1,34 +1,81 @@
 import { createRoot } from 'react-dom/client'
-import { MemoryRouter } from 'react-router-dom'
 import { act } from 'react'
-import App from '../src/App'
-import ErrorBoundary from '../src/components/ErrorBoundary'
-import { AuthProvider } from '../src/lib/auth'
-import { ThemeProvider } from '../src/lib/theme'
+import Penyedia from '../app/penyedia'
+import { RequireRole } from '../src/lib/auth'
 import { STUDENTS } from '../src/lib/mockData'
+import { aturJalur } from './palsu-next-navigation'
+
+import Login from '../src/halaman/Login'
+import Profil from '../src/halaman/Profil'
+import StudentLayout from '../src/halaman/student/StudentLayout'
+import Dashboard from '../src/halaman/student/Dashboard'
+import TranskripPage from '../src/halaman/student/TranskripPage'
+import Peta from '../src/halaman/student/Peta'
+import Riwayat from '../src/halaman/student/Riwayat'
+import Sertifikat from '../src/halaman/student/Sertifikat'
+import AdminLayout from '../src/halaman/admin/AdminLayout'
+import Overview from '../src/halaman/admin/Overview'
+import Students from '../src/halaman/admin/Students'
+import StudentDetail from '../src/halaman/admin/StudentDetail'
+import Programs from '../src/halaman/admin/Programs'
+import Nilai from '../src/halaman/admin/Nilai'
 
 /* Dibuka untuk uji sinkronisasi foto profil. */
 export { kunciSesi, simpanProfil } from '../src/lib/profil'
-export { BATAS_BARIS_ASPEK } from '../src/pages/student/Dashboard'
+export { BATAS_BARIS_ASPEK } from '../src/halaman/student/Dashboard'
 
-/* Memasang aplikasi utuh pada satu rute. Dipakai semua uji di berkas ini
-   supaya susunan provider tidak ditulis ulang di tiap fungsi. */
+/* --------------------------------------------------------------------------
+   Peta rute untuk uji.
+
+   Next menyusun halaman dari berkas: app/mahasiswa/layout.jsx membungkus
+   app/mahasiswa/page.jsx, dan seterusnya. Di jsdom tidak ada penyusun itu,
+   jadi susunannya ditulis ulang di sini — TERMASUK RequireRole dan layoutnya,
+   supaya yang diuji benar-benar sama dengan yang dilihat pengguna, bukan
+   halaman telanjang tanpa kerangka.
+
+   Kalau nanti ada rute baru di app/, tambahkan juga di sini.
+   -------------------------------------------------------------------------- */
+const mahasiswa = (isi) => (
+  <RequireRole role="student">
+    <StudentLayout>{isi}</StudentLayout>
+  </RequireRole>
+)
+
+const admin = (isi) => (
+  <RequireRole role="admin">
+    <AdminLayout>{isi}</AdminLayout>
+  </RequireRole>
+)
+
+const RUTE = {
+  '/masuk': { pohon: () => <Login />, params: {} },
+  '/mahasiswa': { pohon: () => mahasiswa(<Dashboard />) },
+  '/mahasiswa/transkrip': { pohon: () => mahasiswa(<TranskripPage />) },
+  '/mahasiswa/peta': { pohon: () => mahasiswa(<Peta />) },
+  '/mahasiswa/riwayat': { pohon: () => mahasiswa(<Riwayat />) },
+  '/mahasiswa/sertifikat': { pohon: () => mahasiswa(<Sertifikat />) },
+  '/mahasiswa/profil': { pohon: () => mahasiswa(<Profil />) },
+  '/admin': { pohon: () => admin(<Overview />) },
+  '/admin/mahasiswa': { pohon: () => admin(<Students />) },
+  '/admin/mahasiswa/DEMO-3': { pohon: () => admin(<StudentDetail />), params: { id: 'DEMO-3' } },
+  '/admin/program-studi': { pohon: () => admin(<Programs />) },
+  '/admin/nilai': { pohon: () => admin(<Nilai />) },
+  '/admin/profil': { pohon: () => admin(<Profil />) },
+}
+
+/* Memasang satu rute lengkap dengan penyedia konteks yang sama persis dengan
+   app/layout.jsx — supaya uji tidak pernah memakai susunan provider sendiri
+   yang diam-diam berbeda dari aplikasinya. */
 async function pasang(rute) {
+  const entri = RUTE[rute]
+  if (!entri) throw new Error('Rute belum terdaftar di scripts/smoke.jsx: ' + rute)
+  aturJalur(rute, entri.params ?? {})
+
   const el = document.createElement('div')
   document.body.appendChild(el)
   const root = createRoot(el)
   await act(async () => {
-    root.render(
-      <ErrorBoundary>
-        <ThemeProvider>
-          <MemoryRouter initialEntries={[rute]}>
-            <AuthProvider>
-              <App />
-            </AuthProvider>
-          </MemoryRouter>
-        </ThemeProvider>
-      </ErrorBoundary>,
-    )
+    root.render(<Penyedia>{entri.pohon()}</Penyedia>)
   })
   await act(async () => { await new Promise((r) => setTimeout(r, 30)) })
   const lepas = () => {
@@ -173,6 +220,43 @@ export async function ujiPeta(rute) {
 
   await klik(kepala(3))
   hasil.setelahTutup = terbuka()
+
+  lepas()
+  return hasil
+}
+
+/**
+ * History: tab menyaring dengan benar, kalimat "disetujui" hanya dipakai untuk
+ * yang final, dan angka yang ditunggu sama dengan angka di lonceng.
+ */
+export async function ujiRiwayat(rute) {
+  const { el, lepas } = await pasang(rute)
+  const tab = (n) => [...el.querySelectorAll('[role="tab"]')].find((t) => t.textContent.startsWith(n))
+  const angka = (t) => Number(t.textContent.replace(/\D+/g, ''))
+  const kartu = el.querySelector('[role="tablist"]').closest('section')
+  const baris = () => [...kartu.querySelectorAll('ul > li')]
+
+  const hasil = { jumlah: {} }
+  for (const nama of ['Semua', 'Final', 'Sementara']) hasil.jumlah[nama] = angka(tab(nama))
+
+  await klik(tab('Semua'))
+  hasil.barisSemua = baris().length
+
+  await klik(tab('Final'))
+  hasil.barisFinal = baris().length
+  hasil.finalSelaluDisetujui = baris().every((li) => /disetujui oleh/.test(li.textContent))
+
+  await klik(tab('Sementara'))
+  hasil.barisSementara = baris().length
+  hasil.sementaraTidakDisetujui = baris().every(
+    (li) => /belum dikunci/.test(li.textContent) && !/disetujui oleh/.test(li.textContent),
+  )
+
+  const lonceng = el.querySelector('button[aria-label$="komponen belum dinilai"]')
+  hasil.lonceng = lonceng ? Number(lonceng.getAttribute('aria-label').match(/\d+/)[0]) : 0
+  const m = el.textContent.match(/(\d+) komponen sudah dinilai dan (\d+) masih ditunggu/)
+  hasil.kalimat = m ? { dinilai: Number(m[1]), ditunggu: Number(m[2]) } : null
+  hasil.adaKoreksi = /Pengajuan koreksi saya/.test(el.textContent)
 
   lepas()
   return hasil

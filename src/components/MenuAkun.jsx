@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '../lib/auth'
 import { Avatar } from './Ui'
 import { IconChevronDown, IconChevronRight, IconLogout, IconUsers } from './Icons'
@@ -17,7 +18,7 @@ import { IconChevronDown, IconChevronRight, IconLogout, IconUsers } from './Icon
 
 export default function MenuAkun({ foto = null, tone = 'onbrand', rinci = null }) {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -81,20 +82,20 @@ export default function MenuAkun({ foto = null, tone = 'onbrand', rinci = null }
               {user?.role === 'admin' ? 'Kemahasiswaan' : 'Mahasiswa'}
             </p>
           </div>
-          <NavLink
-            to={profilKe}
+          <Link
+            href={profilKe}
             onClick={() => setOpen(false)}
             className="flex w-full items-center gap-2.5 border-b border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-2"
           >
             <IconUsers size={17} className="text-ink-2" />
             Profil
             <IconChevronRight size={16} className="ml-auto text-ink-3" />
-          </NavLink>
+          </Link>
           <button
             type="button"
             onClick={() => {
               logout()
-              navigate('/masuk', { replace: true })
+              router.replace('/masuk')
             }}
             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--critical)] transition hover:bg-surface-2"
           >

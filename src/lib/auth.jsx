@@ -1,5 +1,7 @@
+'use client'
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { contohEmailMahasiswa, getStudentByEmail } from './mockData.js'
 
 /* Autentikasi tiruan untuk tahap UI/UX — peran ditentukan dari domain email.
@@ -21,23 +23,39 @@ export function roleFromEmail(email) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
+  const [user, setUser] = useState(null)
+  const [siap, setSiap] = useState(false)
+
+  /* --------------------------------------------------------------------------
+     Sesi dibaca SESUDAH komponen menempel, bukan saat state pertama dibuat.
+
+     Di Next.js halaman dirender lebih dulu di server, dan di sana localStorage
+     tidak ada. Kalau sesi ikut dibaca pada render pertama, HTML dari server
+     (belum masuk) berbeda dengan render pertama di peramban (sudah masuk), dan
+     React akan menolak hidrasinya. `siap` menandai bahwa pembacaan itu sudah
+     selesai — sebelum itu, penjaga peran tidak boleh menyimpulkan apa pun.
+     -------------------------------------------------------------------------- */
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? JSON.parse(raw) : null
+      if (raw) setUser(JSON.parse(raw))
     } catch {
-      return null
+      /* localStorage bisa diblokir — sesi cukup di memori */
     }
-  })
+    setSiap(true)
+  }, [])
 
+  /* Menulis hanya setelah pembacaan awal selesai. Tanpa penjagaan ini,
+     render pertama (user masih null) akan menghapus sesi yang tersimpan. */
   useEffect(() => {
+    if (!siap) return
     try {
       if (user) localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
       else localStorage.removeItem(STORAGE_KEY)
     } catch {
-      /* localStorage bisa diblokir — abaikan, sesi cukup di memori */
+      /* diabaikan */
     }
-  }, [user])
+  }, [user, siap])
 
   const login = useCallback(async ({ email, password }) => {
     if (!email.trim() || !password) throw new Error('Email dan kata sandi wajib diisi.')
@@ -86,7 +104,10 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => setUser(null), [])
 
-  const value = useMemo(() => ({ user, login, logout, admin: ADMIN_PROFILE }), [user, login, logout])
+  const value = useMemo(
+    () => ({ user, siap, login, logout, admin: ADMIN_PROFILE }),
+    [user, siap, login, logout],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
@@ -96,10 +117,33 @@ export function useAuth() {
   return ctx
 }
 
+/**
+ * Penjaga peran. Berbeda dari versi react-router yang mengembalikan <Navigate>,
+ * di Next perpindahan dilakukan lewat router di dalam efek — mengubah rute
+ * selagi merender akan ditolak React.
+ *
+ * Selama sesi belum selesai dibaca, tidak ada yang dirender: menebak "belum
+ * masuk" lalu melempar ke halaman login akan menendang keluar pengguna yang
+ * sebenarnya sudah masuk.
+ */
 export function RequireRole({ role, children }) {
-  const { user } = useAuth()
-  const location = useLocation()
-  if (!user) return <Navigate to="/masuk" state={{ from: location.pathname }} replace />
-  if (user.role !== role) return <Navigate to={user.role === 'admin' ? '/admin' : '/mahasiswa'} replace />
+  const { user, siap } = useAuth()
+  const router = useRouter()
+
+  const tujuan = !siap
+    ? null
+    : !user
+      ? '/masuk'
+      : user.role !== role
+        ? user.role === 'admin'
+          ? '/admin'
+          : '/mahasiswa'
+        : null
+
+  useEffect(() => {
+    if (tujuan) router.replace(tujuan)
+  }, [tujuan, router])
+
+  if (!siap || tujuan) return null
   return children
 }

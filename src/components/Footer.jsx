@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { IconChat, IconLogo, IconMail, IconPhone } from './Icons'
 
 /* --------------------------------------------------------------------------
@@ -26,7 +26,7 @@ function Pintasan({ ke, label, icon: Icon }) {
   return (
     <li>
       <Link
-        to={ke}
+        href={ke}
         className="flex w-[84px] flex-col items-center gap-2 rounded-xl px-2 py-3 text-center transition hover:bg-white/10"
       >
         <Icon size={30} />

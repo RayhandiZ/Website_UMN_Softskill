@@ -14,14 +14,40 @@ A.1 dan A.2. Sumbu penilaian adalah 10 aspek CPMK.
 
 ```bash
 npm install
-npm run dev       # http://localhost:5173
-npm run build
+npm run dev       # http://localhost:3000
+npm run build     # next build
+npm start         # melayani hasil build
 
 npm run verify      # cetak seluruh angka scoring untuk enam persona
 npm run smoke       # render tiap rute di DOM sungguhan, cari galat
 npm run assert      # periksa transkrip mematuhi R2, R3, R4, R8
 npm run test:nilai  # simpan batch, rollback, dan validasi import
+npm run test:profil # penyimpanan profil: kunci akun, simpan-muat, foto
 ```
+
+## Kerangka: Next.js App Router
+
+Aplikasi berjalan di **Next.js 16 (App Router)** dengan **React 19** dan **Tailwind 3**.
+Basis data belum disambungkan — data masih dari `src/lib/mockData.js`, dan perubahan nilai
+disimpan di peramban (lihat `src/lib/store.js`).
+
+```
+app/        berkas rute — tipis, isinya hanya menunjuk komponen di src/
+src/halaman berkas halaman sesungguhnya (dulu src/pages; diganti namanya karena
+            Next mengira folder bernama "pages" adalah Pages Router)
+src/lib     domain: config → curriculum → scoring → rules, plus store & auth
+```
+
+Seluruh halaman adalah komponen klien (`'use client'`): sesi, tema, dan penyimpanan nilai
+semuanya hidup di peramban. Saat basis data nanti masuk, halaman yang perlu data server
+tinggal dipindahkan menjadi komponen server satu per satu tanpa mengubah tata letaknya.
+
+Dua hal yang perlu diingat saat menambah halaman:
+
+1. Tambahkan rutenya di `app/`, **dan** daftarkan di `scripts/smoke.jsx` — uji merender
+   komponen langsung tanpa server Next, jadi susunan layout ditulis ulang di sana.
+2. Tautan memakai `next/link`. Untuk tautan yang perlu tahu dirinya sedang aktif, pakai
+   `TautanNav` dari `src/lib/nav.jsx` — padanan `<NavLink>` yang tidak ada di Next.
 
 ## Struktur kurikulum enam lapis
 
@@ -355,13 +381,18 @@ Untuk memperagakan: persona mahasiswa bawaan adalah **Rayhandi Zulmi**, NIM `251
 angkatan **2025 Genap**, semester 2. Di panel admin pilih semester 1 atau 2 dengan angkatan
 2025 Genap, isi nilainya, lalu buka `/mahasiswa` — angkanya sudah berubah.
 
-## Versi react-router dipatok
+## Catatan migrasi dari Vite + react-router
 
-`react-router-dom` dipatok tepat di **6.26.2** (tanpa `^`). Pada 6.30.6 komponen `<Navigate>`
-memakai `useEffect(() => navigate(...))` berbadan ekspresi sedangkan `navigate()` mengembalikan
-Promise, sehingga React memanggil Promise itu sebagai fungsi cleanup saat `<Navigate>` dilepas
-→ `TypeError: destroy is not a function` dan halaman jadi kosong. Redirect pertama aplikasi
-(`/` → `/masuk`) langsung memicunya. Jangan naikkan tanpa menguji ulang alur redirect.
+Proyek ini sebelumnya berjalan di Vite dengan `react-router-dom`. Tiga hal yang berubah dan
+tidak boleh dikembalikan begitu saja:
+
+- **Sesi dibaca sesudah komponen menempel**, bukan saat render pertama (`src/lib/auth.jsx`).
+  Di server `localStorage` tidak ada; membacanya saat render membuat HTML server berbeda
+  dengan render pertama di peramban, dan React menolak hidrasinya.
+- **Tema ditetapkan skrip kecil di `<head>`** sebelum halaman digambar (`src/lib/theme.jsx`),
+  supaya pengguna bertema gelap tidak melihat kedipan putih.
+- **Penjaga peran berpindah lewat router di dalam efek**, bukan mengembalikan `<Navigate>`:
+  mengubah rute selagi merender ditolak React.
 
 ## Status pengerjaan
 

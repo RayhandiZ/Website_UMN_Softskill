@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { TautanNav } from '../lib/nav'
 import { useAuth } from '../lib/auth'
 import { useTheme } from '../lib/theme'
 import Laci from './Laci'
@@ -24,7 +26,7 @@ import { IconBell, IconLogo, IconMenu, IconMoon, IconSun } from './Icons'
 export default function Navbar({ links = [], notifications = 0, notifKe = null, foto = null }) {
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
-  const navigate = useNavigate()
+  const router = useRouter()
   const [laci, setLaci] = useState(false)
 
   const profilKe = user?.role === 'admin' ? '/admin/profil' : '/mahasiswa/profil'
@@ -45,18 +47,18 @@ export default function Navbar({ links = [], notifications = 0, notifKe = null, 
           <IconMenu size={23} />
         </button>
 
-        <NavLink to="/" className="flex items-center gap-2.5 text-white">
+        <Link href="/" className="flex items-center gap-2.5 text-white">
           <IconLogo size={40} />
           <span className="hidden text-[15px] font-extrabold tracking-tight sm:block">
             UMN <span className="text-[var(--accent)]">SOFTSKILL</span>
           </span>
-        </NavLink>
+        </Link>
 
         <nav className="ml-2 hidden items-center gap-1 sm:ml-6 md:flex">
           {links.map((l) => (
-            <NavLink
+            <TautanNav
               key={l.to}
-              to={l.to}
+              href={l.to}
               end={l.end}
               className={({ isActive }) =>
                 'whitespace-nowrap rounded-lg px-3 py-2 text-[13.5px] font-bold transition ' +
@@ -64,14 +66,14 @@ export default function Navbar({ links = [], notifications = 0, notifKe = null, 
               }
             >
               {l.label}
-            </NavLink>
+            </TautanNav>
           ))}
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
           {notifications > 0 && notifKe ? (
-            <NavLink
-              to={notifKe}
+            <Link
+              href={notifKe}
               className="relative grid h-9 w-9 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
               aria-label={notifications + ' hal menunggu ditangani'}
             >
@@ -79,7 +81,7 @@ export default function Navbar({ links = [], notifications = 0, notifKe = null, 
               <span className="absolute right-1.5 top-1.5 grid h-4 min-w-[16px] place-items-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-extrabold text-[#2b1c00]">
                 {notifications}
               </span>
-            </NavLink>
+            </Link>
           ) : null}
 
           <span className="mx-1.5 hidden h-6 w-px bg-white/20 sm:block" />
@@ -100,9 +102,9 @@ export default function Navbar({ links = [], notifications = 0, notifKe = null, 
       <Laci buka={laci} onTutup={() => setLaci(false)}>
         <nav className="py-2">
           {links.map((l) => (
-            <NavLink
+            <TautanNav
               key={l.to}
-              to={l.to}
+              href={l.to}
               end={l.end}
               onClick={() => setLaci(false)}
               className={({ isActive }) =>
@@ -111,24 +113,24 @@ export default function Navbar({ links = [], notifications = 0, notifKe = null, 
               }
             >
               {l.label}
-            </NavLink>
+            </TautanNav>
           ))}
 
           <span className="my-2 block h-px bg-line" />
 
-          <NavLink
-            to={profilKe}
+          <Link
+            href={profilKe}
             onClick={() => setLaci(false)}
             className="block px-5 py-3.5 text-[16px] font-bold text-ink transition hover:bg-surface-2"
           >
             Profil
-          </NavLink>
+          </Link>
           <button
             type="button"
             onClick={() => {
               setLaci(false)
               logout()
-              navigate('/masuk', { replace: true })
+              router.replace('/masuk')
             }}
             className="block w-full px-5 py-3.5 text-left text-[16px] font-bold text-[var(--critical)] transition hover:bg-surface-2"
           >

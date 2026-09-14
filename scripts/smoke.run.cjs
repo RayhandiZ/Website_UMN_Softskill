@@ -50,6 +50,15 @@ const ISI = {
     [/Rata-rata per aspek CPMK/, 'tidak ada lagi bar sepuluh aspek', false],
     [/Fakultas[\s\S]{0,60}Program studi[\s\S]{0,60}Angkatan[\s\S]{0,60}Semester/, 'tidak ada filter bertingkat', false],
   ],
+  '/mahasiswa/riwayat': [
+    [/FASE 4|Segera hadir/i, 'bukan lagi halaman segera hadir', false],
+    [/Riwayat penilaian/, 'ada daftar riwayat penilaian'],
+    [/disetujui oleh/, 'komponen final menyebut siapa yang menyetujui'],
+    [/dari (PDP|MK Humaniora|Kemahasiswaan)/, 'tiap catatan menyebut jalur penilaiannya'],
+    [/Final berarti aspeknya sudah dikunci/, 'arti Final dijelaskan'],
+    /* Yang belum dinilai tempatnya di lonceng, bukan di riwayat. */
+    [/belum masuk/, 'komponen yang belum dinilai tidak ikut masuk riwayat', false],
+  ],
   '/mahasiswa/peta': [
     [/FASE 4|Segera hadir/i, 'bukan lagi halaman segera hadir', false],
     [/Anda sedang menjalani Semester 2 dari 3/, 'posisi mahasiswa disebut di kepala halaman'],
@@ -92,6 +101,7 @@ const RUTE = [
   ['student', '/mahasiswa', 'Ringkasan mahasiswa'],
   ['student', '/mahasiswa/transkrip', 'Transkrip'],
   ['student', '/mahasiswa/peta', 'Peta Perjalanan'],
+  ['student', '/mahasiswa/riwayat', 'History'],
   ['student', '/mahasiswa/sertifikat', 'Sertifikat'],
   ['student', '/mahasiswa/profil', 'Profil mahasiswa'],
   ['admin', '/admin', 'Ringkasan admin'],
@@ -105,7 +115,7 @@ const RUTE = [
 ;(async () => {
   const bundle = require('./bundle.cjs')
   const mod = require(bundle('smoke.jsx', '.smoke.cjs', { platform: 'browser', format: 'cjs', loader: { '.jsx': 'jsx' }, jsx: 'automatic' }))
-  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, perAngkatan, BATAS_BARIS_ASPEK } = mod
+  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, perAngkatan, BATAS_BARIS_ASPEK } = mod
   let gagal = 0
   for (const [peran, rute, nama] of RUTE) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
@@ -218,8 +228,10 @@ const RUTE = [
     ...Object.entries(ha.tabSesuai).map(([nama, x]) => {
       const harap = Math.min(x.tertulis, BATAS_BARIS_ASPEK)
       const sisa = x.tertulis - harap
+      /* Label tautannya ditentukan pemilik proyek: "Lihat Selengkapnya" saat
+         masih ada sisa, "Lihat transkrip lengkap" saat semua sudah tampil. */
       const tautanBenar = sisa > 0
-        ? x.tautan.some((t) => t.includes('Lihat ' + sisa + ' aspek lainnya'))
+        ? x.tautan.some((t) => t.includes('Lihat Selengkapnya'))
         : x.tautan.some((t) => t.includes('Lihat transkrip lengkap'))
       return [
         'tab ' + nama + ': ' + x.tampil + ' dari ' + x.tertulis + ' tampil' + (sisa ? ', tautan menyebut ' + sisa + ' sisanya' : ''),
@@ -306,6 +318,36 @@ const RUTE = [
         (tamat ? 'tamat' : 'semester ' + m.semesterAktif) +
         (galat ? ' — GALAT RENDER' : '') + (kalimat ? '' : ' — kalimat posisi salah') + (penanda ? '' : ' — penanda posisi salah'),
     )
+  }
+
+  /* --------------------------------- history ------------------------------ */
+  console.log('')
+  const mR = daftarUji()[0]
+  w.localStorage.setItem(
+    'sk5c.session',
+    JSON.stringify({ role: 'student', studentId: mR.id, nim: mR.nim, email: mR.email, name: mR.name, initials: 'XX' }),
+  )
+  const hh = await ujiRiwayat('/mahasiswa/riwayat')
+  const cekRiwayat = [
+    ['Final + Sementara = Semua', hh.jumlah.Final + hh.jumlah.Sementara === hh.jumlah.Semua,
+      hh.jumlah.Final + ' + ' + hh.jumlah.Sementara + ' vs ' + hh.jumlah.Semua],
+    ['tab Semua menampilkan semua catatan', hh.barisSemua === hh.jumlah.Semua, hh.barisSemua + ' baris'],
+    ['tab Final menyaring dengan benar', hh.barisFinal === hh.jumlah.Final, hh.barisFinal + ' baris'],
+    ['tab Sementara menyaring dengan benar', hh.barisSementara === hh.jumlah.Sementara, hh.barisSementara + ' baris'],
+    /* Kata "disetujui" hanya boleh dipakai untuk nilai yang sudah dikunci —
+       nilai sementara masih bisa berubah. */
+    ['tiap catatan final menyebut siapa yang menyetujui', hh.finalSelaluDisetujui],
+    ['catatan sementara tidak pernah disebut disetujui', hh.sementaraTidakDisetujui],
+    ['jumlah yang ditunggu sama dengan angka di lonceng', hh.kalimat && hh.kalimat.ditunggu === hh.lonceng,
+      hh.kalimat ? hh.kalimat.ditunggu + ' vs lonceng ' + hh.lonceng : 'kalimat tidak ditemukan'],
+    ['jumlah yang sudah dinilai sama dengan tab Semua', hh.kalimat && hh.kalimat.dinilai === hh.jumlah.Semua],
+    ['pengajuan koreksi mahasiswa ikut tercatat', hh.adaKoreksi],
+  ]
+  const rusakRiwayat = cekRiwayat.filter(([, ok]) => !ok)
+  gagal += rusakRiwayat.length
+  console.log((rusakRiwayat.length ? 'GAGAL  ' : 'OK     ') + 'history')
+  for (const [ket, ok, rinci] of cekRiwayat) {
+    console.log('       ' + (ok ? 'v ' : 'x ') + ket + (ok || rinci === undefined ? '' : '  → ' + rinci))
   }
 
   console.log(gagal ? '\n' + gagal + ' rute bermasalah' : '\nSeluruh rute merender tanpa galat')
