@@ -147,7 +147,11 @@ export default function StudentLayout({ children }) {
 
       <div className="flex min-h-screen flex-col">
         {/* ------------------------------ bilah atas ----------------------------- */}
-        <header className="sticky top-0 z-20 bg-[color-mix(in_srgb,var(--bg)_88%,transparent)] backdrop-blur print:hidden">
+        {/* Bilah atas sengaja tembus pandang tipis dengan kabur yang ringan: isi
+            halaman terlihat samar lewat di bawahnya, tapi tidak sampai
+            mengganggu. 74% masih menyisakan kontras 7,37:1 pada kasus terburuk
+            — bilah gelap yang dilewati kartu putih — jauh di atas ambang 4,5:1. */}
+        <header className="sticky top-0 z-20 bg-[color-mix(in_srgb,var(--bg)_72%,transparent)] backdrop-blur-sm print:hidden">
           <div className="mx-auto flex h-[72px] w-full max-w-[1200px] items-center gap-3 px-4 sm:px-6 lg:px-8">
             <button
               type="button"

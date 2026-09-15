@@ -17,9 +17,15 @@ import { useSyncExternalStore } from 'react'
 
 const KUNCI = 'sk5c.profil'
 
-/** Sisi foto setelah diperkecil. 256 px sudah tajam untuk avatar terbesar
-    (64 px) pada layar 2×, dan hasilnya cukup kecil untuk localStorage. */
+/** Sisi foto akhir yang dipakai avatar di seluruh aplikasi. 256 px sudah tajam
+    untuk avatar terbesar (64 px) pada layar 2×, dan hasilnya cukup kecil untuk
+    localStorage. */
 export const UKURAN_FOTO = 256
+
+/** Sisi terpanjang gambar asal yang ikut disimpan agar foto bisa DISUNTING
+    ULANG posisinya tanpa mengunggah berkas lagi. Tanpa ini, menyunting ulang
+    berarti memperbesar gambar 256 px dan hasilnya pecah. */
+export const UKURAN_SUMBER = 512
 
 /** Batas berkas sumber. Yang disimpan jauh lebih kecil karena diperkecil dulu,
     tetapi berkas raksasa tetap ditolak lebih awal agar peramban tidak
@@ -28,7 +34,13 @@ export const BATAS_FOTO_MB = 5
 
 export const JENIS_FOTO = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
-const KOSONG = Object.freeze({ telepon: '', ponsel: '', alamat: '', foto: null })
+const KOSONG = Object.freeze({
+  telepon: '',
+  ponsel: '',
+  alamat: '',
+  foto: null,
+  fotoSumber: null,
+})
 
 let data = {}
 let versi = 0
@@ -120,14 +132,50 @@ const bacaBerkas = (file) =>
     r.readAsDataURL(file)
   })
 
+/* Konteks gambar milik sebuah canvas, atau null bila lingkungannya tidak punya
+   canvas sama sekali (misalnya jsdom saat pengujian). Memeriksa keberadaan
+   getContext saja tidak cukup: metodenya ada, tetapi hasilnya bisa null. */
+function konteksKanvas(sisi) {
+  if (typeof document === 'undefined') return null
+  const kanvas = document.createElement('canvas')
+  if (!kanvas.getContext) return null
+  kanvas.width = sisi
+  kanvas.height = sisi
+  let ctx = null
+  try {
+    ctx = kanvas.getContext('2d')
+  } catch {
+    return null
+  }
+  return ctx ? { kanvas, ctx } : null
+}
+
+const muatGambar = async (sumber) => {
+  const img = new Image()
+  img.src = sumber
+  await (img.decode
+    ? img.decode()
+    : new Promise((ok, no) => {
+        img.onload = ok
+        img.onerror = () => no(new Error('Gambar tidak dapat dibuka.'))
+      }))
+  return img
+}
+
+/** Mengeluarkan hasil kanvas sebagai data URL, WebP bila didukung. */
+function keDataURL(kanvas) {
+  const webp = kanvas.toDataURL('image/webp', 0.85)
+  return webp.startsWith('data:image/webp') ? webp : kanvas.toDataURL('image/jpeg', 0.85)
+}
+
 /**
- * Memeriksa, memotong bujur sangkar, dan memperkecil foto menjadi data URL.
+ * Memeriksa berkas lalu mengembalikan gambar asalnya sebagai data URL,
+ * diperkecil sampai sisi terpanjangnya UKURAN_SUMBER.
  *
- * Pemotongan dilakukan di tengah supaya wajah pada foto potret tidak terpangkas
- * dari bawah, dan hasilnya selalu 1:1 sehingga bingkai avatar bulat di seluruh
- * aplikasi tidak pernah menggepengkan gambar.
+ * Sengaja TIDAK memotong apa pun: pemotongan menunggu pengguna mengatur sendiri
+ * posisi dan perbesarannya.
  */
-export async function siapkanFoto(file) {
+export async function bacaFoto(file) {
   if (!file) throw new Error('Tidak ada berkas yang dipilih.')
   if (!JENIS_FOTO.includes(file.type)) {
     throw new Error('Jenis berkas harus JPG, PNG, WebP, atau GIF.')
@@ -142,48 +190,57 @@ export async function siapkanFoto(file) {
     )
   }
 
-  const sumber = await bacaBerkas(file)
+  const asal = await bacaBerkas(file)
 
-  /* Tanpa canvas (misalnya di lingkungan uji) foto disimpan apa adanya —
-     lebih baik gambar asli daripada gagal sama sekali. */
-  if (typeof document === 'undefined' || !document.createElement('canvas').getContext) {
-    return sumber
-  }
+  /* Tanpa canvas, gambar dipakai apa adanya — lebih baik daripada gagal. */
+  const kotak = konteksKanvas(UKURAN_SUMBER)
+  if (!kotak) return asal
 
-  const img = new Image()
-  img.src = sumber
-  await (img.decode
-    ? img.decode()
-    : new Promise((ok, no) => {
-        img.onload = ok
-        img.onerror = () => no(new Error('Gambar tidak dapat dibuka.'))
-      }))
+  const img = await muatGambar(asal)
+  const sisiTerpanjang = Math.max(img.width, img.height)
+  if (sisiTerpanjang <= UKURAN_SUMBER) return asal
 
-  const kanvas = document.createElement('canvas')
-  kanvas.width = UKURAN_FOTO
-  kanvas.height = UKURAN_FOTO
-  const ctx = kanvas.getContext('2d')
+  const rasio = UKURAN_SUMBER / sisiTerpanjang
+  const lebar = Math.round(img.width * rasio)
+  const tinggi = Math.round(img.height * rasio)
+  kotak.kanvas.width = lebar
+  kotak.kanvas.height = tinggi
+  kotak.ctx.fillStyle = '#ffffff'
+  kotak.ctx.fillRect(0, 0, lebar, tinggi)
+  kotak.ctx.drawImage(img, 0, 0, lebar, tinggi)
+  return keDataURL(kotak.kanvas)
+}
+
+/**
+ * Memotong gambar menjadi bujur sangkar UKURAN_FOTO sesuai posisi dan
+ * perbesaran yang dipilih pengguna.
+ *
+ * `tampil` adalah lebar kotak pratinjau di layar, dan `x`/`y` adalah geseran
+ * dalam piksel layar pada kotak itu. Perhitungan di bawah menerjemahkannya
+ * kembali ke piksel gambar asli, sehingga yang terlihat di pratinjau persis
+ * sama dengan yang tersimpan.
+ */
+export async function potongFoto(sumber, { skala = 1, x = 0, y = 0, tampil = 240 } = {}) {
+  const kotak = konteksKanvas(UKURAN_FOTO)
+  if (!kotak) return sumber
+
+  const img = await muatGambar(sumber)
+
+  // k = perbesaran "cover": gambar minimal menutupi seluruh kotak pratinjau.
+  const k = Math.max(tampil / img.width, tampil / img.height)
+  const efektif = k * skala
+  const sisiSumber = tampil / efektif
+
+  const sx = img.width / 2 - sisiSumber / 2 - x / efektif
+  const sy = img.height / 2 - sisiSumber / 2 - y / efektif
 
   /* Latar putih dulu: JPEG tidak menyimpan transparansi, dan tanpa ini bagian
      tembus pandang pada PNG akan menjadi hitam pekat. */
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, UKURAN_FOTO, UKURAN_FOTO)
+  kotak.ctx.fillStyle = '#ffffff'
+  kotak.ctx.fillRect(0, 0, UKURAN_FOTO, UKURAN_FOTO)
+  kotak.ctx.drawImage(img, sx, sy, sisiSumber, sisiSumber, 0, 0, UKURAN_FOTO, UKURAN_FOTO)
 
-  const sisi = Math.min(img.width, img.height)
-  ctx.drawImage(
-    img,
-    (img.width - sisi) / 2,
-    (img.height - sisi) / 2,
-    sisi,
-    sisi,
-    0,
-    0,
-    UKURAN_FOTO,
-    UKURAN_FOTO,
-  )
-
-  const webp = kanvas.toDataURL('image/webp', 0.85)
-  return webp.startsWith('data:image/webp') ? webp : kanvas.toDataURL('image/jpeg', 0.85)
+  return keDataURL(kotak.kanvas)
 }
 
 muat()

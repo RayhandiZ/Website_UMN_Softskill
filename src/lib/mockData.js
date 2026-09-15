@@ -120,6 +120,10 @@ export const PROGRAMS = FACULTIES.flatMap((f) =>
 export const FACULTY_OF = Object.fromEntries(PROGRAMS.map((p) => [p.program, p.faculty]))
 export const JENJANG_OF = Object.fromEntries(PROGRAMS.map((p) => [p.program, p.jenjang]))
 
+/* Satu program studi hanya milik satu fakultas, jadi fakultasnya bisa
+   disimpulkan dari prodinya — tidak perlu dipilih dua kali. */
+export const FAKULTAS_OF = Object.fromEntries(PROGRAMS.map((p) => [p.program, p.faculty]))
+
 /** Nama program studi pada sebuah fakultas — 'Semua' berarti seluruh fakultas. */
 export function programStudi(faculty = 'Semua') {
   return (faculty === 'Semua' ? PROGRAMS : PROGRAMS.filter((p) => p.faculty === faculty)).map((p) => p.program)
@@ -617,3 +621,70 @@ export function kelengkapanMatriks(rows) {
   return hasil
 }
 
+/* --------------------------------------------------------------------------
+   Pekerjaan penilaian yang masih menganggur.
+
+   Dikelompokkan persis seperti yang diminta Langkah 1 pada halaman Input Nilai:
+   ANGKATAN × SEMESTER × SUMBER. Dengan begitu satu baris pada lonceng bisa
+   langsung menjadi satu sasaran input — pengguna tidak perlu menerjemahkan
+   sendiri "ada 340 nilai kosong" menjadi pilihan dropdown.
+
+   Per mahasiswa akan terlalu banyak (ratusan mahasiswa × puluhan komponen);
+   per semester saja terlalu kasar karena satu semester diisi oleh tiga unit
+   penilai yang berbeda.
+   -------------------------------------------------------------------------- */
+export function pekerjaanPenilaian(rows = STUDENTS) {
+  const hasil = []
+
+  for (const c of COHORTS) {
+    const mhs = rows.filter((s) => s.angkatanId === c.id)
+    if (!mhs.length) continue
+
+    for (let sem = 1; sem <= CONFIG.TOTAL_SEMESTER_PROGRAM; sem++) {
+      // Semester yang belum dibuka tidak punya pekerjaan — bukan nol, melainkan belum waktunya.
+      if (c.semesterAktif < sem) continue
+      const aspek = getAspekList().filter((a) => a.semester === sem)
+
+      for (const sumber of ['PDP', 'MK', 'ENGAGEMENT']) {
+        let kosong = 0
+        const aspekKurang = []
+        const mhsKurang = new Set()
+
+        for (const a of aspek) {
+          const komponen = getKomponen(a.id).filter((k) => k.sumber === sumber)
+          if (!komponen.length) continue
+          let kurangDiAspek = false
+          for (const s of mhs) {
+            for (const k of komponen) {
+              if (s.nilai?.[a.id]?.komponen?.[k.id]?.nilai == null) {
+                kosong++
+                kurangDiAspek = true
+                mhsKurang.add(s.nim)
+              }
+            }
+          }
+          if (kurangDiAspek) aspekKurang.push(a)
+        }
+
+        if (kosong) {
+          hasil.push({
+            id: c.id + '-S' + sem + '-' + sumber,
+            angkatan: c,
+            semester: sem,
+            sumber,
+            kosong,
+            mahasiswa: mhsKurang.size,
+            /* Bila yang tertinggal cuma satu orang, NIM-nya ikut dibawa supaya
+               halaman input bisa langsung menyaring ke baris orang itu. */
+            nimTunggal: mhsKurang.size === 1 ? [...mhsKurang][0] : null,
+            aspek: aspekKurang,
+          })
+        }
+      }
+    }
+  }
+
+  /* Yang paling banyak tertunda muncul lebih dulu — itu yang paling menahan
+     terbitnya nilai akhir. */
+  return hasil.sort((a, b) => b.kosong - a.kosong)
+}

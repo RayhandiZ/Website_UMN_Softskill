@@ -135,7 +135,7 @@ export default function Transkrip({ student }) {
             {Object.values(t.semester).map((sem) => (
               <tbody key={sem.semester}>
                 <tr className="border-b border-line bg-brand-soft/40">
-                  <th colSpan={6} className="px-4 py-2.5 text-left text-[12.5px] font-extrabold text-brand-ink">
+                  <th colSpan={6} className="px-4 py-2.5 text-left text-[12.5px] font-bold text-brand-ink">
                     Semester {sem.semester}
                     <span className="ml-2 font-semibold text-ink-3">
                       {sem.terkunci
@@ -143,7 +143,7 @@ export default function Transkrip({ student }) {
                         : '· ' + sem.dinilai + ' dari ' + sem.total + ' aspek dinilai'}
                     </span>
                   </th>
-                  <th className="px-4 py-2.5 text-right text-[12.5px] font-extrabold tabular-nums text-brand-ink">
+                  <th className="px-4 py-2.5 text-right text-[12.5px] font-bold tabular-nums text-brand-ink">
                     {sem.nilai ?? '—'}
                   </th>
                   <th />
@@ -196,7 +196,7 @@ export default function Transkrip({ student }) {
                           {a.terkunci ? (
                             <IconLock size={15} className="ml-auto text-ink-3" />
                           ) : (
-                            <span className="text-[15px] font-extrabold tabular-nums text-ink">
+                            <span className="text-[15px] font-bold tabular-nums text-ink">
                               {a.nilai ?? '—'}
                             </span>
                           )}

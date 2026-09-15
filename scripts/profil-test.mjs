@@ -11,7 +11,7 @@ globalThis.localStorage = {
   removeItem: (k) => isi.delete(k),
 }
 
-const { kunciAkun, simpanProfil, siapkanFoto, BATAS_FOTO_MB } = await import('../src/lib/profil.js')
+const { kunciAkun, simpanProfil, bacaFoto, BATAS_FOTO_MB } = await import('../src/lib/profil.js')
 
 const garis = (t) => '\n' + '─'.repeat(74) + '\n' + t + '\n' + '─'.repeat(74)
 let gagal = 0
@@ -68,8 +68,8 @@ console.log(garis('3. HANYA BIDANG MILIK PENGGUNA'))
    adalah bentuk bawaannya: empat bidang, tidak lebih. */
 const bawaan = simpanProfil('nim:uji-bawaan', {})
 cek(
-  'Bentuk bawaan hanya empat bidang',
-  Object.keys(bawaan).sort().join(',') === 'alamat,foto,ponsel,telepon',
+  'Bentuk bawaan hanya bidang milik pengguna',
+  Object.keys(bawaan).sort().join(',') === 'alamat,foto,fotoSumber,ponsel,telepon',
   Object.keys(bawaan).sort().join(','),
 )
 
@@ -79,7 +79,7 @@ console.log(garis('4. BERKAS FOTO YANG DITOLAK'))
 
 const tolak = async (nama, file, potongan) => {
   try {
-    await siapkanFoto(file)
+    await bacaFoto(file)
     cek(nama, false, 'tidak ada penolakan')
   } catch (e) {
     cek(nama, e.message.includes(potongan), e.message)

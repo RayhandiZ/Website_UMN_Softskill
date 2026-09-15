@@ -67,7 +67,9 @@ const RUTE = {
    app/layout.jsx — supaya uji tidak pernah memakai susunan provider sendiri
    yang diam-diam berbeda dari aplikasinya. */
 async function pasang(rute) {
-  const entri = RUTE[rute]
+  /* Query string dilepas saat mencari pohonnya: '/admin/nilai?semester=3&...'
+     tetap halaman yang sama, hanya sasarannya berbeda. */
+  const entri = RUTE[String(rute).split('?')[0]]
   if (!entri) throw new Error('Rute belum terdaftar di scripts/smoke.jsx: ' + rute)
   aturJalur(rute, entri.params ?? {})
 
@@ -257,6 +259,238 @@ export async function ujiRiwayat(rute) {
   const m = el.textContent.match(/(\d+) komponen sudah dinilai dan (\d+) masih ditunggu/)
   hasil.kalimat = m ? { dinilai: Number(m[1]), ditunggu: Number(m[2]) } : null
   hasil.adaKoreksi = /Pengajuan koreksi saya/.test(el.textContent)
+
+  lepas()
+  return hasil
+}
+
+/**
+ * Lonceng panel Kemahasiswaan, dari ujung ke ujung.
+ *
+ * Bukan sekadar "panelnya terbuka": tautan salah satu barisnya diambil, lalu
+ * halaman Input Nilai dibuka dengan alamat itu — dan diperiksa apakah
+ * sasarannya benar-benar terisi sendiri. Itu janji fiturnya.
+ */
+export async function ujiLoncengAdmin() {
+  const { el, lepas } = await pasang('/admin')
+  const hasil = {}
+
+  const lonceng = el.querySelector('button[aria-label$="hal menunggu ditangani"]')
+  hasil.adaLonceng = !!lonceng
+  hasil.angka = lonceng ? Number(lonceng.getAttribute('aria-label').match(/^\d+/)[0]) : 0
+  const panel = () => el.querySelector('[role="dialog"][aria-label="Pekerjaan yang menunggu"]')
+  hasil.panelTertutupAwal = !panel()
+
+  await klik(lonceng)
+  hasil.panelTerbuka = !!panel()
+  const tautan = panel() ? [...panel().querySelectorAll('a')] : []
+  hasil.jumlahBaris = tautan.length
+  hasil.semuaKeInput = tautan.every((a) => a.getAttribute('href').startsWith('/admin/nilai?'))
+  hasil.adaKoreksi = /Pengajuan koreksi/.test(panel()?.textContent ?? '')
+  hasil.adaBelumDinilai = /Belum dinilai/.test(panel()?.textContent ?? '')
+
+  /* Tiga jenis tautan yang berbeda perlakuan:
+     - koreksi  → membuka tab Pengajuan koreksi
+     - tunggal  → kelompok yang tinggal satu mahasiswa, NIM-nya ikut dibawa
+     - kelompok → sasaran input biasa */
+  const semua = tautan.map((a) => a.getAttribute('href'))
+  hasil.tautanKoreksi = semua.find((h) => h.includes('tab=koreksi')) ?? null
+  hasil.tautanTunggal = semua.find((h) => h.includes('cari=') && !h.includes('tab=koreksi')) ?? null
+  hasil.tautanKelompok = semua.find((h) => !h.includes('cari=') && !h.includes('tab=koreksi')) ?? null
+
+  lepas()
+  return hasil
+}
+
+/** Membuka halaman Input Nilai pada satu alamat, lalu melaporkan isinya. */
+export async function ujiSasaranInput(alamat) {
+  const { el, lepas } = await pasang(alamat)
+  const teks = el.textContent
+  const pilihan = [...el.querySelectorAll('select')].map((x) => x.value)
+  const hasil = {
+    teks,
+    pilihan,
+    semesterTerpilih: pilihan.find((v) => /^Semester \d$/.test(v)) ?? null,
+    kotakCari: [...el.querySelectorAll('input')].map((x) => x.value).find((v) => /^\d{6,}$/.test(v)) ?? null,
+    gerbangMasihTertutup: /Pilih semester terlebih dahulu/.test(teks),
+  }
+  lepas()
+  return hasil
+}
+
+/**
+ * Menyetujui satu pengajuan koreksi dengan benar-benar menekan tombolnya.
+ *
+ * Tombol ini pernah rusak diam-diam: penyimpanan berjalan serentak dan
+ * mengembalikan boolean, tetapi pemanggilnya masih memakai .catch() seperti
+ * pada Promise, sehingga sekali ditekan halaman melempar TypeError. Tidak ada
+ * uji yang menangkapnya karena tidak ada yang pernah menekan tombolnya.
+ */
+export async function ujiKeputusanKoreksi(alamat) {
+  /* Alamat lengkap, bukan sekadar ?tab=koreksi: area kerja halaman ini memang
+     tertutup sampai semester dipilih — persis seperti tautan yang disusun
+     lonceng. */
+  const { el, lepas } = await pasang(alamat)
+
+  const tombol = [...el.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Setujui')
+  const hasil = { adaTombol: tombol.length > 0, galat: null }
+
+  /* Galat saat menekan tidak boleh ditelan diam-diam — itu justru yang diuji. */
+  const asalOnError = window.onerror
+  window.onerror = (pesan) => {
+    hasil.galat = String(pesan)
+    return true
+  }
+  try {
+    await klik(tombol[0])
+  } catch (e) {
+    hasil.galat = e.message
+  }
+  window.onerror = asalOnError
+
+  hasil.adaLencanaDisetujui = /Disetujui/.test(el.textContent)
+  hasil.tombolnyaHilang =
+    [...el.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Setujui').length <
+    tombol.length
+
+  lepas()
+  return hasil
+}
+
+/** Mengubah nilai sebuah <select> lewat peristiwa yang sama dengan pengguna. */
+const pilih = async (el, nilai) => {
+  const asli = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set
+  await act(async () => {
+    asli.call(el, nilai)
+    el.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+}
+
+/** Mengetik ke sebuah <input> lewat peristiwa yang sama dengan pengguna. */
+const ketik = async (el, nilai) => {
+  const asli = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+  await act(async () => {
+    asli.call(el, nilai)
+    el.dispatchEvent(new window.Event('input', { bubbles: true }))
+  })
+}
+
+/**
+ * Halaman Input Nilai: memilih program studi harus menarik fakultasnya, dan
+ * kolom Tanda hanya boleh hidup untuk baris yang benar-benar diisi.
+ */
+export async function ujiSasaranDanTanda(alamat, prodi, fakultasHarapan) {
+  const { el, lepas } = await pasang(alamat)
+  const hasil = {}
+
+  const label = (teks) =>
+    [...el.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith(teks))
+  const selectDi = (teks) => label(teks)?.querySelector('select')
+
+  const selProdi = selectDi('Program studi')
+  const selFakultas = selectDi('Fakultas')
+  hasil.adaKeduaKotak = !!selProdi && !!selFakultas
+  hasil.fakultasAwal = selFakultas?.value
+
+  await pilih(selProdi, prodi)
+  hasil.fakultasSesudah = selectDi('Fakultas')?.value
+  hasil.fakultasIkut = hasil.fakultasSesudah === fakultasHarapan
+
+  /* Identitas mahasiswa: nama saja tidak cukup untuk tahu prodi dan fakultasnya. */
+  hasil.barisMenyebutProdi = new RegExp(prodi).test(el.textContent)
+
+  const tombolTanda = () =>
+    [...el.querySelectorAll('button')].filter((x) =>
+      (x.getAttribute('aria-label') ?? '').startsWith('Tandai status untuk'),
+    )
+  hasil.adaKolomTanda = tombolTanda().length > 0
+  hasil.tandaMatiSebelumDiisi = tombolTanda().every((x) => x.disabled)
+
+  /* Pilihan status global sudah dibuang — status hanya ditentukan per baris. */
+  hasil.tanpaPilihanGlobal = !/Status untuk nilai yang Anda simpan nanti|Ikuti aturan sistem/.test(
+    el.textContent,
+  )
+
+  /* Isi satu sel nilai, lalu tanda pada baris ITU saja yang boleh menyala. */
+  const kotakNilai = [...el.querySelectorAll('input[type="number"]')]
+  if (kotakNilai.length) {
+    await ketik(kotakNilai[0], '88')
+    const sesudah = tombolTanda()
+    hasil.tandaHidupSetelahDiisi = sesudah[0] && !sesudah[0].disabled
+    hasil.tandaLainTetapMati = sesudah.slice(1).every((x) => x.disabled)
+
+    /* Menunya baru muncul setelah pensilnya ditekan, dan isinya tepat dua. */
+    hasil.menuTertutupAwal = !/tahan walau sudah lengkap/.test(el.textContent)
+    await klik(sesudah[0])
+    const menu = sesudah[0].closest('td')
+    const pilihan = [...menu.querySelectorAll('button')]
+      .map((b) => b.textContent)
+      .filter((t) => /Sementara|Final/.test(t))
+    hasil.jumlahPilihan = pilihan.length
+    hasil.tanpaIkutiPilihan = !/Ikuti pilihan di atas/.test(menu.textContent)
+
+    /* Menu harus MELAYANG, bukan menumpuk di dalam sel: kalau ia kembali
+       mengalir di dalam tabel, tinggi barisnya ikut bertambah dan tepi tabel
+       yang bisa digulir akan memotongnya. */
+    const lapisan = [...menu.querySelectorAll('div')].find((d) => d.style.position === 'fixed')
+    hasil.menuMelayang = !!lapisan
+    hasil.menuBerkaca = !!lapisan && lapisan.className.split(' ').includes('kaca')
+    hasil.menuBeranimasi = !!lapisan && lapisan.className.split(' ').includes('animate-kaca')
+    hasil.selRataTengah = menu.className.includes('align-middle')
+
+    const tombolFinal = [...menu.querySelectorAll('button')].find((b) =>
+      b.textContent.startsWith('Final'),
+    )
+    await klik(tombolFinal)
+    hasil.terpilihFinal = /Final/.test(tombolTanda()[0].textContent)
+    hasil.menuTertutupSesudah = !/kunci, nilai berhenti berubah/.test(el.textContent)
+  }
+
+  lepas()
+  return hasil
+}
+
+/**
+ * Penyunting foto profil: dibuka dari foto yang sudah tersimpan, perbesarannya
+ * bisa diubah, lalu hasilnya dipakai.
+ *
+ * Di jsdom tidak ada canvas, jadi potongFoto mengembalikan gambar asalnya —
+ * yang diuji di sini alur dan kendalinya, bukan hasil pemotongannya.
+ */
+export async function ujiPenyuntingFoto(rute) {
+  const { el, lepas } = await pasang(rute)
+  const hasil = {}
+
+  /* Dicari lewat aria-label, bukan teks yang terlihat: labelnya boleh berubah
+     ("Atur posisi" → "Edit") tanpa membuat uji ini palsu gagal. */
+  const tombolAtur = el.querySelector('button[aria-label="Edit foto profil"]')
+  hasil.adaTombolAtur = !!tombolAtur
+  const penyunting = () => el.querySelector('[aria-label="Atur foto"]')
+  hasil.tertutupAwal = !penyunting()
+
+  await klik(tombolAtur)
+  const buka = penyunting()
+  hasil.terbuka = !!buka
+  hasil.adaAreaGeser = !!buka?.querySelector('[role="application"]')
+  hasil.adaPenggeser = !!buka?.querySelector('input[type="range"]')
+  hasil.persenAwal = /100% dari ukuran pas/.test(buka?.textContent ?? '')
+
+  const penggeser = buka?.querySelector('input[type="range"]')
+  if (penggeser) {
+    const asli = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+    await act(async () => {
+      asli.call(penggeser, '2')
+      penggeser.dispatchEvent(new window.Event('change', { bubbles: true }))
+    })
+    hasil.persenBerubah = /200% dari ukuran pas/.test(penyunting()?.textContent ?? '')
+  }
+
+  const pakai = [...(penyunting()?.querySelectorAll('button') ?? [])].find((b) =>
+    b.textContent.includes('Pakai foto ini'),
+  )
+  await klik(pakai)
+  hasil.tertutupSesudah = !penyunting()
+  hasil.adaPratinjau = /Siap disimpan/.test(el.textContent)
 
   lepas()
   return hasil

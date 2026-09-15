@@ -118,10 +118,15 @@ function PanelStatusAspek({ student }) {
   const t = transkripOf(student)
   const terbuka = t.aspek.filter((a) => !a.terkunci)
 
-  const ubah = (aspekId, status) =>
-    Promise.resolve(setPenguncian({ nim: student.nim, aspekId, status, aktor: admin.officer })).catch((e) =>
-      window.alert(e.message),
-    )
+  /* setPenguncian berjalan serentak. Pembungkus Promise.resolve di sini dulu
+     hanya untuk menjinakkan .catch — sekarang tidak perlu lagi. */
+  const ubah = (aspekId, status) => {
+    try {
+      setPenguncian({ nim: student.nim, aspekId, status, aktor: admin.officer })
+    } catch (e) {
+      window.alert(e.message)
+    }
+  }
 
   return (
     <Card className="print:hidden">

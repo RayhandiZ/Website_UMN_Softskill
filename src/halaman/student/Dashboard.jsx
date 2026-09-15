@@ -131,7 +131,7 @@ function BarisAspek({ a, terbuka, onToggle }) {
         aria-controls={idRinci}
         className="flex w-full items-center gap-4 px-5 py-4 text-left transition hover:bg-surface-2 sm:px-6"
       >
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-[13px] font-extrabold text-ink">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-[13px] font-bold text-ink">
           {a.aspek.kode}
         </span>
 
@@ -365,7 +365,7 @@ function PerjalananSemester({ t }) {
                 <span className="flex items-baseline justify-between gap-2">
                   <span className="text-[15px] font-bold text-ink">Semester {s.semester}</span>
                   {keadaan !== 'terkunci' ? (
-                    <span className="text-[15px] font-extrabold text-ink">{s.nilai ?? '—'}</span>
+                    <span className="text-[15px] font-bold text-ink">{s.nilai ?? '—'}</span>
                   ) : null}
                 </span>
                 <span className="mt-0.5 block text-[13px] text-ink-2">

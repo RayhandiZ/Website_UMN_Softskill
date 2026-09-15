@@ -168,7 +168,7 @@ export default function Students() {
                       <span className="w-14">
                         <ScoreBar value={x.nilai ?? 0} color="var(--c1)" height={7} />
                       </span>
-                      <span className="w-7 text-right text-[14px] font-extrabold tabular-nums text-ink">
+                      <span className="w-7 text-right text-[14px] font-bold tabular-nums text-ink">
                         {x.nilai ?? '—'}
                       </span>
                     </div>

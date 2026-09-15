@@ -6,14 +6,15 @@ import { useAuth } from '../lib/auth'
 import { useTheme } from '../lib/theme'
 import Laci from './Laci'
 import MenuAkun from './MenuAkun'
-import { IconBell, IconLogo, IconMenu, IconMoon, IconSun } from './Icons'
+import { IconLogo, IconMenu, IconMoon, IconSun } from './Icons'
 
 /* Bilah atas panel Kemahasiswaan. Panel mahasiswa memakai kerangka sendiri
    (sidebar + bilah terang) — lihat StudentLayout.
 
    Setiap kendali di sini harus menuju ke suatu tempat. Tombol pesan dibuang
-   karena fitur pesan memang belum ada, dan lonceng hanya muncul bila memang ada
-   yang menunggu — sekaligus menjadi tautan ke halaman yang menanganinya.
+   karena fitur pesan memang belum ada. Lonceng tidak lagi dibangun di sini,
+   melainkan dikirim lewat prop `aksi` — isinya pekerjaan khas panel ini, dan
+   kerangkanya tidak perlu tahu apa-apa tentang itu.
 
    Di bawah 768px tautan navigasi pindah ke laci: berjejer mendatar, tiga tautan
    sudah cukup untuk memotong judulnya di tengah kata pada layar 390px, dan
@@ -23,7 +24,7 @@ import { IconBell, IconLogo, IconMenu, IconMoon, IconSun } from './Icons'
    Fotonya DITERIMA dari layout, bukan dicari sendiri: yang tahu persis siapa
    pemilik sesi adalah layout, dan dua tempat yang menyusun kunci akun sendiri-
    sendiri bisa berbeda untuk orang yang sama. */
-export default function Navbar({ links = [], notifications = 0, notifKe = null, foto = null }) {
+export default function Navbar({ links = [], aksi = null, foto = null }) {
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
   const router = useRouter()
@@ -71,18 +72,7 @@ export default function Navbar({ links = [], notifications = 0, notifKe = null, 
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          {notifications > 0 && notifKe ? (
-            <Link
-              href={notifKe}
-              className="relative grid h-9 w-9 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
-              aria-label={notifications + ' hal menunggu ditangani'}
-            >
-              <IconBell size={19} />
-              <span className="absolute right-1.5 top-1.5 grid h-4 min-w-[16px] place-items-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-extrabold text-[#2b1c00]">
-                {notifications}
-              </span>
-            </Link>
-          ) : null}
+          {aksi}
 
           <span className="mx-1.5 hidden h-6 w-px bg-white/20 sm:block" />
 

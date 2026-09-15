@@ -76,7 +76,7 @@ export default function LoncengBelumDinilai({ t }) {
         >
           <div className="border-b border-line px-4 py-3.5">
             <p className="flex items-baseline justify-between gap-3">
-              <span className="text-[15px] font-extrabold text-ink">Belum dinilai</span>
+              <span className="text-[15px] font-bold text-ink">Belum dinilai</span>
               <span className="text-[13px] font-semibold text-ink-2">{jumlah} komponen</span>
             </p>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
@@ -88,7 +88,7 @@ export default function LoncengBelumDinilai({ t }) {
             {kelompok.map(({ aspek, komponen }) => (
               <section key={aspek.id} className="border-b border-line py-3 last:border-0">
                 <p className="flex items-center gap-2 text-[13.5px] font-bold text-ink">
-                  <span className="grid h-7 min-w-[28px] place-items-center rounded-lg bg-surface-2 px-1 text-[11.5px] font-extrabold">
+                  <span className="grid h-7 min-w-[28px] place-items-center rounded-lg bg-surface-2 px-1 text-[11.5px] font-bold">
                     {aspek.kode}
                   </span>
                   <span className="truncate">{aspek.nama}</span>

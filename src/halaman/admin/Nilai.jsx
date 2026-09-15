@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Badge,
@@ -37,6 +38,7 @@ import {
   BATCH_IMPORT,
   COHORTS,
   FACULTIES,
+  FAKULTAS_OF,
   JENJANG_OF,
   PENGAJUAN_KOREKSI,
   STUDENTS,
@@ -60,43 +62,52 @@ import { useAuth } from '../../lib/auth'
 const PAGE_SIZE = 10
 const SEMESTER_KOSONG = '— Pilih semester —'
 
-/* Bagaimana status aspek diperlakukan setelah nilai disimpan. Ini melengkapi
-   CONFIG.PENGUNCIAN_ASPEK: modenya berlaku umum, pilihan ini berlaku untuk
-   satu kali penyimpanan dan selalu menang atas mode. */
-const MODE_SIMPAN = [
-  {
-    id: 'biarkan',
-    label: 'Ikuti aturan sistem',
-    ringkas: 'Aspek menjadi final sendiri begitu seluruh komponennya terisi.',
-  },
-  {
-    id: 'final',
-    label: 'Tandai final',
-    ringkas: 'Kunci aspek yang komponennya sudah lengkap — nilainya berhenti berubah.',
-  },
-  {
-    id: 'sementara',
-    label: 'Tahan sebagai sementara',
-    ringkas: 'Biarkan berstatus sementara walau sudah lengkap, karena masih mungkin direvisi.',
-  },
+
+/* Tanda status per baris — satu-satunya tempat status ditentukan.
+   Baris tanpa tanda mengikuti aturan sistem: aspek menjadi final sendiri
+   begitu seluruh komponennya terisi. */
+const TANDA_BARIS = [
+  { id: 'sementara', label: 'Sementara', ringkas: 'tahan walau sudah lengkap' },
+  { id: 'final', label: 'Final', ringkas: 'kunci, nilai berhenti berubah' },
 ]
 
-/* Menerapkan pilihan status ke aspek-aspek yang tersentuh sebuah batch. */
-async function terapkanStatus(batch, mode, aktor) {
+/**
+ * Menerapkan status ke aspek-aspek yang tersentuh sebuah batch.
+ *
+ * Hanya menyentuh pasangan (mahasiswa, aspek) yang benar-benar ikut tersimpan —
+ * bukan seluruh angkatan. Status ditentukan per baris: yang tidak ditandai
+ * mengikuti aturan sistem, sehingga satu penyimpanan bisa mengunci sebagian
+ * orang dan menahan sebagian lainnya.
+ */
+async function terapkanStatus(batch, aktor, tandaBaris = {}) {
   const pasangan = [
     ...new Map(batch.jejak.map((j) => [j.nim + '|' + j.aspek, { nim: j.nim, aspekId: j.aspek }])).values(),
   ]
-  if (mode === 'final') {
-    const layak = pasangan.filter((p) => bolehTandaiFinal(getStudentByNim(p.nim), p.aspekId).boleh)
-    await setPenguncianBanyak(layak, { status: 'final', aktor })
-    return { mode, dikunci: layak.length, tersentuh: pasangan.length }
+
+  const kelompok = { final: [], sementara: [], ikuti: [] }
+  for (const pas of pasangan) {
+    const tanda = tandaBaris[pas.nim] ?? null
+    if (tanda === 'final') kelompok.final.push(pas)
+    else if (tanda === 'sementara') kelompok.sementara.push(pas)
+    else kelompok.ikuti.push(pas)
   }
-  if (mode === 'sementara') {
-    await setPenguncianBanyak(pasangan, { status: 'sementara', aktor })
-    return { mode, ditahan: pasangan.length, tersentuh: pasangan.length }
+
+  /* R: aspek yang komponennya belum lengkap tidak boleh dikunci, walau diminta. */
+  const layak = kelompok.final.filter((p) => bolehTandaiFinal(getStudentByNim(p.nim), p.aspekId).boleh)
+
+  if (layak.length) await setPenguncianBanyak(layak, { status: 'final', aktor })
+  if (kelompok.sementara.length) {
+    await setPenguncianBanyak(kelompok.sementara, { status: 'sementara', aktor })
   }
-  await setPenguncianBanyak(pasangan, { status: null, aktor })
-  return { mode, tersentuh: pasangan.length }
+  if (kelompok.ikuti.length) await setPenguncianBanyak(kelompok.ikuti, { status: null, aktor })
+
+  return {
+    dikunci: layak.length,
+    ditolakFinal: kelompok.final.length - layak.length,
+    ditahan: kelompok.sementara.length,
+    otomatis: kelompok.ikuti.length,
+    tersentuh: pasangan.length,
+  }
 }
 
 export default function Nilai() {
@@ -105,15 +116,38 @@ export default function Nilai() {
   const { admin } = useAuth()
   const aktor = admin.officer
 
+  /* --------------------------------------------------------------------------
+     Sasaran boleh datang dari alamat URL.
+
+     Lonceng di bilah atas menautkan ke sini lengkap dengan semester, unit
+     penilai, angkatan, program studi, aspek, dan kadang NIM — sehingga sekali
+     klik dari pemberitahuan, daftar mahasiswa yang perlu dinilai sudah terbuka
+     tanpa satu pun dropdown disentuh.
+
+     Tiap nilai DIPERIKSA dulu, tidak langsung dipakai: alamat bisa diketik
+     tangan atau ketinggalan zaman, dan pilihan yang tidak dikenal harus jatuh
+     ke bawaan, bukan membuat halaman kosong.
+     -------------------------------------------------------------------------- */
+  const params = useSearchParams()
+  const awal = (kunci) => params?.get(kunci) ?? null
+
   /* Langkah 1 — semester WAJIB dipilih lebih dulu. Selama masih kosong,
      seluruh area kerja tidak ditampilkan. */
-  const [semesterPilihan, setSemesterPilihan] = useState(SEMESTER_KOSONG)
-  const [sumber, setSumber] = useState('MK')
-  const [angkatanId, setAngkatanId] = useState(COHORTS[0].id)
-  const [faculty, setFaculty] = useState('Semua')
-  const [program, setProgram] = useState('Semua')
-  const [tab, setTab] = useState('manual')
-  const [modeSimpan, setModeSimpan] = useState('biarkan')
+  const [semesterPilihan, setSemesterPilihan] = useState(() => {
+    const n = Number(awal('semester'))
+    return n >= 1 && n <= CONFIG.TOTAL_SEMESTER_PROGRAM ? 'Semester ' + n : SEMESTER_KOSONG
+  })
+  const [sumber, setSumber] = useState(() =>
+    ['PDP', 'MK', 'ENGAGEMENT'].includes(awal('sumber')) ? awal('sumber') : 'MK',
+  )
+  const [angkatanId, setAngkatanId] = useState(() =>
+    COHORTS.some((c) => c.id === awal('angkatan')) ? awal('angkatan') : COHORTS[0].id,
+  )
+  const [faculty, setFaculty] = useState(() => awal('fakultas') ?? 'Semua')
+  const [program, setProgram] = useState(() => awal('prodi') ?? 'Semua')
+  const [tab, setTab] = useState(() =>
+    ['manual', 'import', 'koreksi'].includes(awal('tab')) ? awal('tab') : 'manual',
+  )
 
   const semester = semesterPilihan === SEMESTER_KOSONG ? null : Number(semesterPilihan.replace(/\D/g, ''))
   const angkatan = getAngkatan(angkatanId)
@@ -213,9 +247,11 @@ export default function Nilai() {
               options={['Semua', ...FACULTIES.map((f) => f.name)]}
             />
             <p className="mt-1.5 text-[12px] text-ink-3">
-              {faculty === 'Semua'
-                ? FACULTIES.length + ' fakultas'
-                : programStudi(faculty).length + ' program studi'}
+              {program !== 'Semua'
+                ? 'mengikuti program studi'
+                : faculty === 'Semua'
+                  ? FACULTIES.length + ' fakultas'
+                  : programStudi(faculty).length + ' program studi'}
             </p>
           </div>
 
@@ -223,7 +259,13 @@ export default function Nilai() {
             <Select
               label="Program studi"
               value={program}
-              onChange={setProgram}
+              onChange={(v) => {
+                setProgram(v)
+                /* Satu prodi hanya milik satu fakultas. Begitu prodi dipilih,
+                   fakultasnya ikut sendiri — kedua kotak ini tidak boleh bisa
+                   saling bertentangan. */
+                if (v !== 'Semua') setFaculty(FAKULTAS_OF[v] ?? faculty)
+              }}
               options={['Semua', ...programStudi(faculty)]}
             />
             <p className="mt-1.5 text-[12px] text-ink-3">
@@ -320,43 +362,6 @@ export default function Nilai() {
 
           <Card>
             <div className="border-b border-line px-5 py-4 sm:px-6">
-              <p className="label">Status nilai yang disimpan</p>
-              <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
-                {MODE_SIMPAN.map((m) => {
-                  const aktif = modeSimpan === m.id
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setModeSimpan(m.id)}
-                      aria-pressed={aktif}
-                      className={
-                        'rounded-xl border px-3.5 py-3 text-left transition ' +
-                        (aktif ? 'border-brand-ink bg-brand-soft' : 'border-line hover:bg-surface-2')
-                      }
-                    >
-                      <span className="flex items-center gap-2 text-[13px] font-bold text-ink">
-                        <span
-                          className={
-                            'grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ' +
-                            (aktif ? 'border-brand-ink' : 'border-line-strong')
-                          }
-                        >
-                          {aktif ? <span className="h-2 w-2 rounded-full bg-brand-ink" /> : null}
-                        </span>
-                        {m.label}
-                      </span>
-                      <span className="mt-1 block text-[12px] leading-snug text-ink-2">{m.ringkas}</span>
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="mt-2.5 text-[12px] leading-snug text-ink-3">
-                Aspek yang komponennya belum lengkap tidak pernah menjadi final, apa pun pilihan di atas.
-              </p>
-            </div>
-
-            <div className="border-b border-line px-5 py-4 sm:px-6">
               <Tabs
                 value={tab}
                 onChange={setTab}
@@ -376,7 +381,8 @@ export default function Nilai() {
                 aspekList={aspekBerkomponen}
                 mahasiswa={mahasiswa}
                 aktor={aktor}
-                modeSimpan={modeSimpan}
+                awalAspek={awal('aspek')}
+                awalCari={awal('cari') ?? ''}
               />
             ) : tab === 'import' ? (
               <ImportCerdas
@@ -386,7 +392,6 @@ export default function Nilai() {
                 komponenSumber={komponenSumber}
                 mahasiswa={mahasiswa}
                 aktor={aktor}
-                modeSimpan={modeSimpan}
                 program={program}
               />
             ) : (
@@ -409,14 +414,20 @@ function HasilSimpan({ hasil }) {
   const { batch, status } = hasil
   const mahasiswa = [...new Map(batch.jejak.map((j) => [j.nim, j])).values()]
 
+  /* Satu penyimpanan kini bisa bercampur: sebagian dikunci, sebagian ditahan,
+     sisanya mengikuti aturan sistem — karena tiap baris boleh bertanda sendiri.
+     Karena itu keterangannya disusun dari hitungan, bukan dari satu pilihan. */
+  const bagian = []
+  if (status.dikunci) bagian.push(status.dikunci + ' aspek dikunci sebagai final')
+  if (status.ditahan) bagian.push(status.ditahan + ' ditahan sebagai sementara')
+  if (status.otomatis) bagian.push(status.otomatis + ' mengikuti aturan sistem')
+
   const catatanStatus =
-    status.mode === 'final'
-      ? status.dikunci
-        ? status.dikunci + ' aspek dikunci sebagai final; nilainya berhenti berubah di transkrip mahasiswa.'
-        : 'Belum ada aspek yang bisa dikunci \u2014 komponennya belum lengkap.'
-      : status.mode === 'sementara'
-        ? status.ditahan + ' aspek ditahan sebagai sementara, walau komponennya sudah lengkap.'
-        : 'Aspek yang komponennya sudah lengkap otomatis berstatus final.'
+    (bagian.length ? bagian.join(', ') + '.' : 'Status aspek tidak diubah.') +
+    (status.ditolakFinal
+      ? ' ' + status.ditolakFinal +
+        ' aspek diminta final tetapi komponennya belum lengkap, jadi tetap sementara.'
+      : '')
 
   return (
     <div className="rounded-xl border border-line bg-[color-mix(in_srgb,var(--good)_8%,transparent)] px-4 py-3.5">
@@ -452,11 +463,121 @@ function HasilSimpan({ hasil }) {
 
 /* ============================== input manual ============================== */
 
-function InputManual({ semester, sumber, angkatan, aspekList, mahasiswa, aktor, modeSimpan }) {
-  const [aspekId, setAspekId] = useState(aspekList[0]?.id ?? null)
-  const [cari, setCari] = useState('')
+/* Tanda status satu baris.
+
+   Berupa tombol pensil, bukan kotak pilihan yang selalu terbuka: sepuluh
+   dropdown menganggur di satu tabel lebih ramai daripada informatif, dan
+   menandai status bukan pekerjaan yang dilakukan pada setiap baris.
+
+   Menunya MELAYANG di atas tabel memakai position: fixed, bukan dibentangkan di
+   dalam sel. Dua alasannya: membentangkan di dalam sel menambah tinggi baris
+   dan mendorong baris lain ke bawah, dan `position: absolute` akan terpotong
+   oleh badan tabel yang bisa digulir mendatar. Elemen fixed tidak ikut
+   terpotong overflow leluhurnya, jadi ia aman melewati tepi tabel.
+
+   Koordinatnya dihitung dari posisi tombol dan diperbarui saat halaman atau
+   tabel digulir, supaya menunya tidak pernah tertinggal di tempat lain.
+
+   Hanya hidup bila barisnya memang diisi: menandai baris yang tidak ikut
+   tersimpan tidak berpengaruh apa pun dan hanya menipu. */
+function TandaBaris({ nama, nilai, aktif, buka, onBuka, onPilih }) {
+  const terpilih = TANDA_BARIS.find((t) => t.id === nilai)
+  const tombolRef = useRef(null)
+  const [posisi, setPosisi] = useState(null)
+
+  useEffect(() => {
+    if (!buka || !tombolRef.current) {
+      setPosisi(null)
+      return
+    }
+    const hitung = () => {
+      const r = tombolRef.current?.getBoundingClientRect()
+      if (!r) return
+      const lebar = 170
+      setPosisi({
+        atas: r.bottom + 6,
+        // Dijaga agar tidak meluber keluar tepi kanan layar sempit.
+        kiri: Math.max(8, Math.min(r.left, window.innerWidth - lebar - 8)),
+      })
+    }
+    hitung()
+    window.addEventListener('resize', hitung)
+    // true: ikut mendengar gulir pada wadah di dalam halaman, bukan hanya jendela.
+    window.addEventListener('scroll', hitung, true)
+    return () => {
+      window.removeEventListener('resize', hitung)
+      window.removeEventListener('scroll', hitung, true)
+    }
+  }, [buka])
+
+  return (
+    <div>
+      <button
+        ref={tombolRef}
+        type="button"
+        onClick={onBuka}
+        disabled={!aktif}
+        aria-expanded={buka}
+        aria-label={'Tandai status untuk ' + nama}
+        className={
+          'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12.5px] font-bold transition ' +
+          (!aktif
+            ? 'cursor-not-allowed border-line bg-surface-2 text-ink-3'
+            : terpilih
+              ? 'border-brand-ink bg-brand-soft text-brand-ink'
+              : 'border-line bg-surface text-ink-2 hover:border-brand-ink hover:text-brand-ink')
+        }
+      >
+        <IconPencil size={14} />
+        {terpilih ? terpilih.label : 'Tandai'}
+      </button>
+
+      {buka && aktif && posisi ? (
+        <div
+          style={{ position: 'fixed', top: posisi.atas, left: posisi.kiri, width: 170 }}
+          className="kaca animate-kaca z-50 rounded-xl p-1"
+        >
+          {TANDA_BARIS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onPilih(t.id === nilai ? null : t.id)}
+              className={
+                'block w-full rounded-md px-2.5 py-1.5 text-left text-[12.5px] font-semibold transition ' +
+                (t.id === nilai ? 'bg-brand-soft text-brand-ink' : 'text-ink hover:bg-surface-2')
+              }
+            >
+              {t.label}
+              <span className="block text-[11px] font-normal leading-snug text-ink-3">{t.ringkas}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function InputManual({
+  semester,
+  sumber,
+  angkatan,
+  aspekList,
+  mahasiswa,
+  aktor,
+  awalAspek = null,
+  awalCari = '',
+}) {
+  /* Aspek dan kotak pencarian ikut sasaran dari alamat URL bila ada. Aspek yang
+     tidak ada pada kombinasi semester+sumber ini diabaikan, jangan sampai
+     daftar komponennya kosong tanpa penjelasan. */
+  const [aspekId, setAspekId] = useState(() =>
+    aspekList.some((a) => a.id === awalAspek) ? awalAspek : (aspekList[0]?.id ?? null),
+  )
+  const [cari, setCari] = useState(awalCari)
   const [page, setPage] = useState(1)
   const [draf, setDraf] = useState({})
+  const [tanda, setTanda] = useState({})
+  const [tandaBuka, setTandaBuka] = useState(null)
   const [pesan, setPesan] = useState(null)
 
   useEffect(() => {
@@ -513,8 +634,10 @@ function InputManual({ semester, sumber, angkatan, aspekList, mahasiswa, aktor, 
       cara: 'manual',
       entri: sah.map(({ nim, komponenId, nilai }) => ({ nim, komponenId, nilai })),
     })
-    const status = await terapkanStatus(batch, modeSimpan, aktor)
+    const status = await terapkanStatus(batch, aktor, tanda)
     setDraf({})
+    setTanda({})
+    setTandaBuka(null)
     setPesan({ batch, status })
   }
 
@@ -537,7 +660,9 @@ function InputManual({ semester, sumber, angkatan, aspekList, mahasiswa, aktor, 
         </div>
         <p className="text-[12.5px] leading-snug text-ink-2 sm:col-span-2">
           {aspekList.find((a) => a.id === aspekId)?.nama} — {kolom.length} komponen dari{' '}
-          {SUMBER[sumber].label}. Kosongkan sel yang belum dinilai; sel kosong tidak dihitung sebagai nol.
+          {SUMBER[sumber].label}. Kosongkan sel yang belum dinilai; sel kosong tidak dihitung sebagai nol. Baris
+          yang tidak ditandai mengikuti aturan sistem — aspeknya menjadi final sendiri begitu
+          seluruh komponennya terisi.
         </p>
       </div>
 
@@ -568,16 +693,34 @@ function InputManual({ semester, sumber, angkatan, aspekList, mahasiswa, aktor, 
                   ) : null}
                 </th>
               ))}
+              <th className="px-3 py-3 text-left text-[11px] font-bold uppercase tracking-[.07em] text-ink-3">
+                Tanda
+                <span className="mt-1 block max-w-[150px] normal-case font-semibold leading-snug text-ink-3">
+                  sementara atau final
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {tampil.map((s) => (
+            {tampil.map((s) => {
+              /* Baris dianggap "diisi" bila ada sel yang sedang diketik pada
+                 baris itu — itulah yang menentukan apakah ia ikut tersimpan. */
+              const barisDiisi = kolom.some((k) => {
+                const v = draf[kunci(s.nim, k.id)]
+                return v !== undefined && String(v).trim() !== ''
+              })
+              return (
               <tr key={s.id} className="border-b border-line">
                 <td className="px-4 py-2.5">
                   <Link href={'/admin/mahasiswa/' + s.id} className="text-[13.5px] font-bold text-ink hover:text-brand-ink">
                     {s.name}
                   </Link>
                   <span className="block text-[12px] tabular-nums text-ink-3">{s.nim}</span>
+                  {/* Tanpa ini, nama pada daftar "Semua fakultas" tidak bisa
+                      dikenali asal program studinya. */}
+                  <span className="block max-w-[210px] text-[12px] leading-snug text-ink-3">
+                    {s.program} · {s.faculty}
+                  </span>
                 </td>
                 {kolom.map((k) => {
                   const tersimpan = nilaiTersimpan(s, k.id)
@@ -614,8 +757,26 @@ function InputManual({ semester, sumber, angkatan, aspekList, mahasiswa, aktor, 
                     </td>
                   )
                 })}
+
+                {/* Tanda per baris. Hanya menyala bila baris ini memang diisi —
+                    menandai baris yang tidak ikut tersimpan tidak ada gunanya
+                    dan hanya menipu. */}
+                <td className="px-3 py-2.5 align-middle">
+                  <TandaBaris
+                    nama={s.name}
+                    nilai={tanda[s.nim] ?? null}
+                    aktif={barisDiisi}
+                    buka={tandaBuka === s.nim}
+                    onBuka={() => setTandaBuka((n) => (n === s.nim ? null : s.nim))}
+                    onPilih={(v) => {
+                      setTanda((t) => ({ ...t, [s.nim]: v }))
+                      setTandaBuka(null)
+                    }}
+                  />
+                </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -666,7 +827,7 @@ function InputManual({ semester, sumber, angkatan, aspekList, mahasiswa, aktor, 
 const ABAIKAN = '— Abaikan kolom ini —'
 const labelKomponen = (k) => k.id + ' · ' + k.label
 
-function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, aktor, modeSimpan, program }) {
+function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, aktor, program }) {
   const [teks, setTeks] = useState('')
   const [analisa, setAnalisa] = useState(null)
   const [peta, setPeta] = useState({})
@@ -758,7 +919,9 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
       cara: analisa.format === 'baku' ? 'import' : 'import-mentah',
       entri: entriSiap,
     })
-    setPesan({ batch, status: await terapkanStatus(batch, modeSimpan, aktor) })
+    /* Import massal tidak punya tanda per baris — seluruhnya mengikuti
+       aturan sistem. Penandaan final dilakukan lewat input manual. */
+    setPesan({ batch, status: await terapkanStatus(batch, aktor) })
     setAnalisa(null)
     setPeta({})
     setTeks('')
@@ -1045,7 +1208,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
                             <td className="px-3 py-2 font-mono text-[12px] text-ink-3">
                               {e.dari.map((d) => d.mentah + '/' + d.skala).join(' · ')} →
                             </td>
-                            <td className="px-3 py-2 text-right text-[13.5px] font-extrabold tabular-nums text-ink">
+                            <td className="px-3 py-2 text-right text-[13.5px] font-bold tabular-nums text-ink">
                               {e.nilai}
                             </td>
                           </tr>
@@ -1154,10 +1317,22 @@ function namaKolomMentah(k) {
 function Koreksi({ aktor }) {
   const [catatan, setCatatan] = useState({})
 
-  const putuskan = (id, keputusan) =>
-    putuskanKoreksi(id, keputusan, { aktor, catatan: catatan[id]?.trim() || null }).catch((e) =>
-      window.alert(e.message),
-    )
+  /* putuskanKoreksi berjalan SERENTAK dan mengembalikan boolean, bukan Promise.
+     Memanggil .catch() di atasnya justru yang membuat tombol ini gagal —
+     sisa dari masa ketika penyimpanan sempat dibuat asinkron. */
+  const putuskan = (id, keputusan) => {
+    try {
+      const berhasil = putuskanKoreksi(id, keputusan, {
+        aktor,
+        catatan: catatan[id]?.trim() || null,
+      })
+      if (!berhasil) {
+        window.alert('Pengajuan tidak ditemukan. Mungkin sudah diputuskan di jendela lain.')
+      }
+    } catch (e) {
+      window.alert(e.message)
+    }
+  }
 
   if (!PENGAJUAN_KOREKSI.length) {
     return <EmptyState title="Belum ada pengajuan koreksi dari mahasiswa." />
@@ -1241,7 +1416,11 @@ function RiwayatBatch() {
               type="button"
               onClick={() => {
                 if (window.confirm('Hapus seluruh perubahan nilai dan kembali ke data contoh bawaan?')) {
-                  Promise.resolve(bersihkanPerubahan()).catch((e) => window.alert(e.message))
+                  try {
+                    bersihkanPerubahan()
+                  } catch (e) {
+                    window.alert(e.message)
+                  }
                 }
               }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-bold text-ink-2 transition hover:border-[var(--critical)] hover:text-[var(--critical)]"
@@ -1268,7 +1447,17 @@ function RiwayatBatch() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => rollbackBatch(b.id).catch((e) => window.alert(e.message))}
+                  onClick={() => {
+                    /* Sama seperti putuskanKoreksi: mengembalikan boolean,
+                       bukan Promise. */
+                    try {
+                      if (!rollbackBatch(b.id)) {
+                        window.alert('Batch ini sudah dibatalkan sebelumnya.')
+                      }
+                    } catch (e) {
+                      window.alert(e.message)
+                    }
+                  }}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-bold text-ink-2 transition hover:border-[var(--critical)] hover:text-[var(--critical)]"
                 >
                   <IconUndo size={14} />

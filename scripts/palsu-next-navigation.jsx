@@ -13,12 +13,19 @@
 
 let jalur = '/'
 let parameter = {}
+let kueri = new URLSearchParams()
 
 export const rekamNavigasi = []
 
-/** Menyetel rute yang sedang "dibuka" sebelum sebuah komponen dirender. */
+/**
+ * Menyetel rute yang sedang "dibuka" sebelum sebuah komponen dirender.
+ * Alamat boleh membawa query string — halaman Input Nilai membaca sasarannya
+ * dari sana, jadi uji harus bisa meniru alamat yang datang dari lonceng.
+ */
 export function aturJalur(p, params = {}) {
-  jalur = p
+  const [path, q = ''] = String(p).split('?')
+  jalur = path
+  kueri = new URLSearchParams(q)
   parameter = params
   rekamNavigasi.length = 0
 }
@@ -32,7 +39,7 @@ export function useParams() {
 }
 
 export function useSearchParams() {
-  return new URLSearchParams()
+  return kueri
 }
 
 export function useRouter() {

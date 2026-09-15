@@ -3,7 +3,7 @@ const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http:
 const w = dom.window
 w.matchMedia = (q) => ({ matches: false, media: q, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){} })
 w.scrollTo = () => {}
-for (const k of ['document','navigator','localStorage','HTMLElement','Element','Node','MutationObserver','requestAnimationFrame','cancelAnimationFrame','SVGElement','ResizeObserver']) global[k] = w[k]
+for (const k of ['document','navigator','localStorage','HTMLElement','Element','Node','MutationObserver','requestAnimationFrame','cancelAnimationFrame','SVGElement','ResizeObserver','HTMLInputElement','HTMLSelectElement','Image','FileReader','File','Blob','Event','MouseEvent','KeyboardEvent']) global[k] = w[k]
 global.window = w
 global.IS_REACT_ACT_ENVIRONMENT = true
 w.IS_REACT_ACT_ENVIRONMENT = true
@@ -115,7 +115,7 @@ const RUTE = [
 ;(async () => {
   const bundle = require('./bundle.cjs')
   const mod = require(bundle('smoke.jsx', '.smoke.cjs', { platform: 'browser', format: 'cjs', loader: { '.jsx': 'jsx' }, jsx: 'automatic' }))
-  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, perAngkatan, BATAS_BARIS_ASPEK } = mod
+  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, perAngkatan, BATAS_BARIS_ASPEK } = mod
   let gagal = 0
   for (const [peran, rute, nama] of RUTE) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
@@ -349,6 +349,141 @@ const RUTE = [
   for (const [ket, ok, rinci] of cekRiwayat) {
     console.log('       ' + (ok ? 'v ' : 'x ') + ket + (ok || rinci === undefined ? '' : '  → ' + rinci))
   }
+
+  /* ------------------- lonceng Kemahasiswaan → input nilai ----------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  const hl = await ujiLoncengAdmin()
+  const cekLonceng = [
+    ['lonceng ada di bilah atas', hl.adaLonceng],
+    ['panel tertutup sebelum ditekan', hl.panelTertutupAwal],
+    ['panel terbuka setelah ditekan', hl.panelTerbuka],
+    ['angka lonceng sama dengan jumlah baris', hl.angka === hl.jumlahBaris, hl.angka + ' vs ' + hl.jumlahBaris],
+    ['panel memuat pengajuan koreksi', hl.adaKoreksi],
+    ['panel memuat pekerjaan yang belum dinilai', hl.adaBelumDinilai],
+    ['setiap baris menuju halaman input nilai', hl.semuaKeInput],
+  ]
+
+  /* Janji fiturnya: sekali diketuk, sasaran di halaman input sudah terisi. */
+  if (hl.tautanKelompok) {
+    const h = await ujiSasaranInput(hl.tautanKelompok)
+    const semDiminta = 'Semester ' + new URL('http://x' + hl.tautanKelompok).searchParams.get('semester')
+    cekLonceng.push(
+      ['tautan kelompok membuka area kerja, bukan gerbang semester', !h.gerbangMasihTertutup],
+      ['semester ikut terpilih sendiri', h.semesterTerpilih === semDiminta, h.semesterTerpilih + ' vs ' + semDiminta],
+    )
+  }
+  if (hl.tautanTunggal) {
+    const q = new URL('http://x' + hl.tautanTunggal).searchParams
+    const h = await ujiSasaranInput(hl.tautanTunggal)
+    cekLonceng.push(
+      ['kelompok satu mahasiswa: NIM terisi di kotak pencarian', h.kotakCari === q.get('cari'),
+        h.kotakCari + ' vs ' + q.get('cari')],
+      ['kelompok satu mahasiswa: barisnya tampil', h.teks.includes(q.get('cari'))],
+    )
+  } else {
+    cekLonceng.push(['ada kelompok yang tinggal satu mahasiswa untuk diuji', false, 'tidak ditemukan'])
+  }
+
+  /* Pengajuan koreksi punya perlakuan sendiri: ia membuka tab koreksi, bukan
+     tabel input, jadi yang diperiksa keberadaan barisnya di sana. */
+  if (hl.tautanKoreksi) {
+    const q = new URL('http://x' + hl.tautanKoreksi).searchParams
+    const h = await ujiSasaranInput(hl.tautanKoreksi)
+    cekLonceng.push(
+      ['koreksi: tab Pengajuan koreksi yang terbuka', /diajukan \d{4}-\d{2}-\d{2}/.test(h.teks)],
+      ['koreksi: NIM pengajunya tampil', h.teks.includes(q.get('cari'))],
+    )
+  }
+
+  const rusakLonceng = cekLonceng.filter(([, ok]) => !ok)
+  gagal += rusakLonceng.length
+  console.log((rusakLonceng.length ? 'GAGAL  ' : 'OK     ') + 'lonceng Kemahasiswaan')
+  for (const [ket, ok, rinci] of cekLonceng) {
+    console.log('       ' + (ok ? 'v ' : 'x ') + ket + (ok || rinci === undefined ? '' : '  → ' + rinci))
+  }
+
+  /* Dijalankan PALING AKHIR: menyetujui koreksi mengubah keadaan bersama,
+     dan uji lain menghitung berapa pengajuan yang masih menunggu. */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  /* Alamatnya diambil dari lonceng, bukan dikarang — sekaligus membuktikan
+     tautan yang dihasilkan lonceng memang membuka tombol keputusannya. */
+  const hk = await ujiKeputusanKoreksi(hl.tautanKoreksi ?? '/admin/nilai?tab=koreksi&semester=1&sumber=MK')
+  const cekKoreksi = [
+    ['tombol Setujui ada di tab koreksi', hk.adaTombol],
+    ['menekan Setujui tidak melempar galat', !hk.galat, hk.galat],
+    ['pengajuannya berubah menjadi Disetujui', hk.adaLencanaDisetujui],
+    ['tombol keputusannya hilang setelah diputuskan', hk.tombolnyaHilang],
+  ]
+  const rusakKoreksi = cekKoreksi.filter(([, ok]) => !ok)
+  gagal += rusakKoreksi.length
+  console.log((rusakKoreksi.length ? 'GAGAL  ' : 'OK     ') + 'keputusan pengajuan koreksi')
+  for (const [ket, ok, rinci] of cekKoreksi) {
+    console.log('       ' + (ok ? 'v ' : 'x ') + ket + (ok || rinci == null ? '' : '  → ' + rinci))
+  }
+
+  /* ---------------- sasaran input: prodi, fakultas, dan tanda -------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  const ht = await ujiSasaranDanTanda(
+    '/admin/nilai?semester=1&sumber=MK&angkatan=2026',
+    'Sistem Informasi',
+    'Teknik & Informatika',
+  )
+  const cekTanda = [
+    ['kotak Fakultas dan Program studi ada', ht.adaKeduaKotak],
+    ['memilih prodi menarik fakultasnya', ht.fakultasIkut, ht.fakultasAwal + ' → ' + ht.fakultasSesudah],
+    ['baris mahasiswa menyebut program studinya', ht.barisMenyebutProdi],
+    ['tidak ada lagi pilihan status global', ht.tanpaPilihanGlobal],
+    ['tombol pensil ada di tiap baris', ht.adaKolomTanda],
+    ['pensil mati selama barisnya belum diisi', ht.tandaMatiSebelumDiisi],
+    ['pensil hidup setelah barisnya diisi', ht.tandaHidupSetelahDiisi],
+    ['baris lain yang belum diisi tetap mati', ht.tandaLainTetapMati],
+    ['menu tertutup sebelum pensil ditekan', ht.menuTertutupAwal],
+    ['menunya tepat dua pilihan', ht.jumlahPilihan === 2, 'ada ' + ht.jumlahPilihan],
+    ['tidak ada lagi "Ikuti pilihan di atas"', ht.tanpaIkutiPilihan],
+    ['menunya melayang, bukan di dalam sel', ht.menuMelayang],
+    ['menunya memakai lapisan kaca', ht.menuBerkaca],
+    ['menunya punya animasi masuk', ht.menuBeranimasi],
+    ['tombol tanda rata tengah sebaris kotak nilai', ht.selRataTengah],
+    ['memilih Final menandai barisnya', ht.terpilihFinal],
+    ['menu menutup sendiri setelah memilih', ht.menuTertutupSesudah],
+  ]
+  const rusakTanda = cekTanda.filter(([, ok]) => !ok)
+  gagal += rusakTanda.length
+  console.log((rusakTanda.length ? 'GAGAL  ' : 'OK     ') + 'sasaran input & tanda per baris')
+  for (const [ket, ok, rinci] of cekTanda) {
+    console.log('       ' + (ok ? 'v ' : 'x ') + ket + (ok || rinci === undefined ? '' : '  → ' + rinci))
+  }
+
+  /* ---------------------------- penyunting foto --------------------------- */
+  console.log('')
+  const mFoto2 = daftarUji()[0]
+  w.localStorage.setItem(
+    'sk5c.session',
+    JSON.stringify({ role: 'student', studentId: mFoto2.id, nim: mFoto2.nim, email: mFoto2.email, name: mFoto2.name, initials: 'XX' }),
+  )
+  mod.simpanProfil(mod.kunciSesi({ role: 'student', nim: mFoto2.nim }), {
+    foto: 'data:image/webp;base64,UJIFOTO',
+    fotoSumber: 'data:image/webp;base64,UJISUMBER',
+  })
+  const hf = await ujiPenyuntingFoto('/mahasiswa/profil')
+  const cekFoto = [
+    ['ada tombol edit pada foto tersimpan', hf.adaTombolAtur],
+    ['penyunting tertutup sebelum ditekan', hf.tertutupAwal],
+    ['penyunting terbuka setelah ditekan', hf.terbuka],
+    ['ada area geser untuk mengatur posisi', hf.adaAreaGeser],
+    ['ada penggeser perbesaran', hf.adaPenggeser],
+    ['perbesaran mulai dari 100%', hf.persenAwal],
+    ['menggeser mengubah perbesaran jadi 200%', hf.persenBerubah],
+    ['penyunting menutup setelah dipakai', hf.tertutupSesudah],
+    ['hasilnya masuk sebagai foto siap disimpan', hf.adaPratinjau],
+  ]
+  const rusakFoto = cekFoto.filter(([, ok]) => !ok)
+  gagal += rusakFoto.length
+  console.log((rusakFoto.length ? 'GAGAL  ' : 'OK     ') + 'penyunting foto profil')
+  for (const [ket, ok] of cekFoto) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
 
   console.log(gagal ? '\n' + gagal + ' rute bermasalah' : '\nSeluruh rute merender tanpa galat')
   process.exit(0)

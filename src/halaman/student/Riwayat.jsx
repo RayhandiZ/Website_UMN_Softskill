@@ -54,7 +54,7 @@ const TAB = [
 function Catatan({ e }) {
   return (
     <li className="flex items-start gap-4 border-b border-line px-5 py-4 last:border-0 sm:px-6">
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-[13px] font-extrabold text-ink">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-[13px] font-bold text-ink">
         {e.aspek.kode}
       </span>
 

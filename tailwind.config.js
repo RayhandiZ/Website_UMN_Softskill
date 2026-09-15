@@ -31,7 +31,7 @@ export default {
         critical: 'var(--critical)',
       },
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        sans: ['var(--font-jakarta)', 'Plus Jakarta Sans', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
       borderRadius: { xl2: '1rem' },
       boxShadow: {

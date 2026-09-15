@@ -2,9 +2,10 @@ import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import { useAuth } from '../../lib/auth'
 import { IconBuilding, IconCertificate, IconUpload, IconUsers } from '../../components/Icons'
-import { PERIODE_AKTIF, PENGAJUAN_KOREKSI, labelPeriode } from '../../lib/mockData'
+import { PERIODE_AKTIF, labelPeriode } from '../../lib/mockData'
 import { useStore } from '../../lib/store'
 import { kunciSesi, useProfil } from '../../lib/profil'
+import LoncengKemahasiswaan from './LoncengKemahasiswaan'
 
 /* Pintasan footer menunjuk ke halaman yang memang ada, bukan tautan hiasan. */
 const PINTASAN = [
@@ -26,7 +27,6 @@ export default function AdminLayout({ children }) {
   useStore()
   const { admin, user } = useAuth()
   const { foto } = useProfil(kunciSesi(user))
-  const koreksi = PENGAJUAN_KOREKSI.filter((k) => k.status === 'menunggu').length
 
   /* Tanpa kolom kiri sama sekali.
 
@@ -43,7 +43,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar links={NAV} notifications={koreksi} notifKe="/admin/nilai" foto={foto} />
+      <Navbar links={NAV} aksi={<LoncengKemahasiswaan />} foto={foto} />
 
       <main className="mx-auto w-full max-w-shell flex-1 px-4 py-7 sm:px-6">
         <p className="mb-5 text-[13.5px] text-ink-2">

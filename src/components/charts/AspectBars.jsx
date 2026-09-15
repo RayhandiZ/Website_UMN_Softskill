@@ -46,7 +46,7 @@ export default function AspectBars({
                   ) : r.nilai == null ? (
                     <span className="text-[12.5px] font-semibold text-ink-3">Belum dinilai</span>
                   ) : (
-                    <span className="text-[15px] font-extrabold tabular-nums text-ink">{r.nilai}</span>
+                    <span className="text-[15px] font-bold tabular-nums text-ink">{r.nilai}</span>
                   )}
                 </span>
               </div>

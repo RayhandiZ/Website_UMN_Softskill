@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Avatar, Badge, Card } from '../components/Ui'
-import { IconAlert, IconCheck, IconChevronDown, IconUpload } from '../components/Icons'
+import { IconAlert, IconCheck, IconChevronDown, IconPencil, IconUpload } from '../components/Icons'
 import { useAuth } from '../lib/auth'
 import { CONFIG } from '../lib/config'
 import { PERIODE_AKTIF, getStudent, labelPeriode, personaAktif } from '../lib/mockData'
 import { useStore } from '../lib/store'
-import { BATAS_FOTO_MB, kunciSesi, siapkanFoto, simpanProfil, useProfil } from '../lib/profil'
+import { BATAS_FOTO_MB, bacaFoto, kunciSesi, simpanProfil, useProfil } from '../lib/profil'
+import PenyuntingFoto from '../components/PenyuntingFoto'
 
 /* --------------------------------------------------------------------------
    Halaman profil untuk DUA peran, satu berkas.
@@ -108,6 +109,9 @@ export default function Profil() {
   const [galat, setGalat] = useState(null)
   const [tersimpanPesan, setTersimpanPesan] = useState(false)
   const [seret, setSeret] = useState(false)
+  /* Gambar yang sedang diatur posisinya. Selama ini terisi, penyunting terbuka
+     dan belum ada apa pun yang masuk ke formulir. */
+  const [sedangDiatur, setSedangDiatur] = useState(null)
   const berkasRef = useRef(null)
 
   /* Berpindah akun (keluar lalu masuk sebagai orang lain) harus memuat ulang
@@ -139,7 +143,8 @@ export default function Profil() {
       form.telepon !== tersimpan.telepon ||
       form.ponsel !== tersimpan.ponsel ||
       form.alamat !== tersimpan.alamat ||
-      form.foto !== tersimpan.foto,
+      form.foto !== tersimpan.foto ||
+      form.fotoSumber !== tersimpan.fotoSumber,
     [form, tersimpan],
   )
 
@@ -158,11 +163,12 @@ export default function Profil() {
     setTersimpanPesan(false)
   }
 
+  /* Berkas yang dipilih TIDAK langsung menjadi foto: ia dibuka di penyunting
+     dulu supaya posisinya bisa diatur. */
   async function ambilFoto(file) {
     setGalat(null)
     try {
-      const foto = await siapkanFoto(file)
-      setForm((f) => ({ ...f, foto }))
+      setSedangDiatur(await bacaFoto(file))
       setTersimpanPesan(false)
     } catch (e) {
       setGalat(e.message)
@@ -242,7 +248,7 @@ export default function Profil() {
         )}
         <Baris
           label="Alamat email"
-          catatan="Kolom abu berasal dari sistem akademik dan tidak dapat diubah di sini."
+          // catatan="Kolom abu berasal dari sistem akademik dan tidak dapat diubah di sini."
         >
           <Tetap>{email}</Tetap>
         </Baris>
@@ -258,8 +264,27 @@ export default function Profil() {
               src={tersimpan.foto}
               alt={tersimpan.foto ? 'Foto profil yang tersimpan' : ''}
             />
-            <span className="text-[14.5px] text-ink-2">
-              {tersimpan.foto ? 'Terpasang' : 'Belum ada — inisial nama yang dipakai'}
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14.5px] text-ink-2">
+                {tersimpan.foto ? 'Terpasang' : 'Belum ada — inisial nama yang dipakai'}
+              </span>
+              {/* Menyunting ulang memakai gambar ASAL yang tersimpan, bukan
+                  hasil potongan 256 px — kalau tidak, memperbesar sedikit saja
+                  sudah membuat fotonya pecah. */}
+              {tersimpan.foto ? (
+                <button
+                  type="button"
+                  onClick={() => setSedangDiatur(tersimpan.fotoSumber ?? tersimpan.foto)}
+                  /* Nama panjangnya dieja untuk pembaca layar: "Edit" sendirian
+                     tidak memberi tahu apa yang disunting. Tetap diawali kata
+                     yang terlihat, supaya perintah suara tetap cocok. */
+                  aria-label="Edit foto profil"
+                  className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[13px] font-bold text-ink-2 transition hover:border-brand-ink hover:text-brand-ink"
+                >
+                  <IconPencil size={14} />
+                  Edit
+                </button>
+              ) : null}
             </span>
           </div>
         </Baris>
@@ -267,9 +292,9 @@ export default function Profil() {
         <Baris
           label="Foto baru"
           catatan={
-            'JPG, PNG, WebP, atau GIF. Maksimal ' +
+            'JPG, PNG, WebP, atau GIF, Maksimal ' +
             BATAS_FOTO_MB +
-            ' MB — gambar dipotong bujur sangkar dan diperkecil otomatis.'
+            ' MB.'
           }
         >
           <input
@@ -284,6 +309,17 @@ export default function Profil() {
             }}
           />
 
+          {sedangDiatur ? (
+            <PenyuntingFoto
+              sumber={sedangDiatur}
+              onBatal={() => setSedangDiatur(null)}
+              onSelesai={(hasil) => {
+                setForm((f) => ({ ...f, foto: hasil, fotoSumber: sedangDiatur }))
+                setSedangDiatur(null)
+                setTersimpanPesan(false)
+              }}
+            />
+          ) : (
           <button
             type="button"
             onClick={() => berkasRef.current?.click()}
@@ -308,6 +344,7 @@ export default function Profil() {
               Seret berkas ke sini, atau <span className="font-bold text-brand-ink">pilih berkas</span>
             </span>
           </button>
+          )}
 
           {form.foto !== tersimpan.foto ? (
             <div className="mt-3 flex items-center gap-3">
@@ -321,9 +358,21 @@ export default function Profil() {
               <span className="text-[14px] text-ink-2">
                 {form.foto ? 'Siap disimpan' : 'Foto akan dihapus'}
               </span>
+              {form.fotoSumber ? (
+                <button
+                  type="button"
+                  onClick={() => setSedangDiatur(form.fotoSumber)}
+                  className="inline-flex items-center gap-1 text-[14px] font-bold text-brand-ink hover:underline"
+                >
+                  <IconPencil size={14} />
+                  Atur lagi
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={() => setForm((f) => ({ ...f, foto: tersimpan.foto }))}
+                onClick={() =>
+                  setForm((f) => ({ ...f, foto: tersimpan.foto, fotoSumber: tersimpan.fotoSumber }))
+                }
                 className="text-[14px] font-bold text-brand-ink underline underline-offset-4"
               >
                 Batalkan pilihan
@@ -411,7 +460,7 @@ export default function Profil() {
         <Baris
           label="Alamat"
           htmlFor="alamat"
-          catatan="Hanya dipakai bila Biro Kemahasiswaan perlu menghubungi Anda. Kolom ini boleh dikosongkan."
+          // catatan="Hanya dipakai bila Biro Kemahasiswaan perlu menghubungi Anda. Kolom ini boleh dikosongkan."
         >
           <textarea
             id="alamat"
@@ -467,10 +516,10 @@ export default function Profil() {
         ) : null}
       </div>
 
-      <p className="pt-1 text-[13px] leading-relaxed text-ink-3">
+      {/* <p className="pt-1 text-[13px] leading-relaxed text-ink-3">
         Telepon, ponsel, alamat, dan foto tersimpan di peramban ini saja — purwarupa ini belum
         terhubung ke basis data kampus. Nama, NIM, program studi, dan angkatan diurus lewat BAAK.
-      </p>
+      </p> */}
     </form>
   )
 }
