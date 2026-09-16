@@ -25,7 +25,10 @@ const ISI = {
     [/<h2[^>]*>Belum dinilai<\/h2>/, 'kartu Belum dinilai tidak lagi di badan halaman', false, true],
     [/aria-label="\d+ komponen belum dinilai"/, 'lonceng Belum dinilai ada di bilah atas', true, true],
     [/Sertifikat[\s\S]{0,60}(Siap diunduh|Belum tersedia)/, 'status sertifikat tetap terlihat'],
-    [/Pintasan[\s\S]{0,160}Road Map[\s\S]{0,160}History/, 'footer punya pintasan berikon'],
+    /* Ditambatkan ke elemen <footer>, bukan ke judul bagiannya: judulnya teks
+       yang bebas diganti ("Pintasan" pernah menjadi "Short Cuts"), sedangkan
+       keberadaan pintasannya sendiri yang ingin dijaga. */
+    [/<footer[\s\S]*?Road Map[\s\S]{0,900}History/, 'footer punya pintasan berikon', true, true],
     [/Helpdesk[\s\S]{0,300}softskill@umn\.ac\.id/, 'helpdesk dan kontak tercantum'],
     [/Akses Cepat/, 'tidak ada lagi blok tombol mati', false],
     /* Aksesoris rujukan yang sengaja tidak dibawa. */
@@ -33,7 +36,9 @@ const ISI = {
     [/Upgrade|Kalender/, 'tidak ada kartu promosi atau kalender kosong', false],
   ],
   '/admin': [
-    [/Requires Review/, 'ada daftar pekerjaan yang menunggu'],
+    /* Kartu "Requires Review" dilebur ke lonceng — isinya mengulang angka yang
+       sama dengan daftar "Belum dinilai" di sana. */
+    [/Requires Review/, 'kartu Requires Review sudah tidak ada di Ringkasan', false],
     [/(Lihat selengkapnya[\s\S]*){6}/, 'enam tautan Lihat selengkapnya ke halaman lain'],
     [/Mahasiswa terpantau[\s\S]{0,400}Rata-rata nilai softskill[\s\S]{0,400}Nilai sudah final/, 'hanya tiga angka utama'],
     /* Catatan "bobot sementara" DIHAPUS dari halaman oleh pemilik proyek, jadi
@@ -115,7 +120,7 @@ const RUTE = [
 ;(async () => {
   const bundle = require('./bundle.cjs')
   const mod = require(bundle('smoke.jsx', '.smoke.cjs', { platform: 'browser', format: 'cjs', loader: { '.jsx': 'jsx' }, jsx: 'automatic' }))
-  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, perAngkatan, BATAS_BARIS_ASPEK } = mod
+  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, perAngkatan, BATAS_BARIS_ASPEK } = mod
   let gagal = 0
   for (const [peran, rute, nama] of RUTE) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
@@ -196,7 +201,7 @@ const RUTE = [
 
   /* ------------------------------ menu di ponsel --------------------------- */
   console.log('')
-  for (const [peran, rute, harapTautan] of [['student', '/mahasiswa', 6], ['admin', '/admin', 5]]) {
+  for (const [peran, rute, harapTautan] of [['student', '/mahasiswa', 6], ['admin', '/admin', 8]]) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
     const h = await ujiMenuHp(rute)
 
@@ -361,7 +366,10 @@ const RUTE = [
     ['angka lonceng sama dengan jumlah baris', hl.angka === hl.jumlahBaris, hl.angka + ' vs ' + hl.jumlahBaris],
     ['panel memuat pengajuan koreksi', hl.adaKoreksi],
     ['panel memuat pekerjaan yang belum dinilai', hl.adaBelumDinilai],
-    ['setiap baris menuju halaman input nilai', hl.semuaKeInput],
+    ['panel memuat bagian Perlu ditinjau', hl.adaPerluDitinjau],
+    ['mahasiswa di bawah ambang ikut tercatat', hl.adaAmbang],
+    ['angkatan siap dikunci ikut tercatat', hl.adaSiapDikunci],
+    ['setiap baris menuju halaman yang menanganinya', hl.semuaPunyaTujuan],
   ]
 
   /* Janji fiturnya: sekali diketuk, sasaran di halaman input sudah terisi. */
@@ -484,6 +492,80 @@ const RUTE = [
   gagal += rusakFoto.length
   console.log((rusakFoto.length ? 'GAGAL  ' : 'OK     ') + 'penyunting foto profil')
   for (const [ket, ok] of cekFoto) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ------------------------- segarkan data mahasiswa ---------------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  const hs = await ujiSegarkanData()
+  const cekSegar = [
+    ['tombol Segarkan data ada', hs.adaTombol],
+    ['belum ada penanda waktu sebelum ditekan', hs.tanpaPenandaAwal],
+    ['penanda waktu muncul setelah ditekan', hs.adaPenandaSesudah],
+    ['daftar mahasiswa tetap utuh setelah disegarkan', hs.daftarTetapAda],
+  ]
+  const rusakSegar = cekSegar.filter(([, ok]) => !ok)
+  gagal += rusakSegar.length
+  console.log((rusakSegar.length ? 'GAGAL  ' : 'OK     ') + 'segarkan data mahasiswa')
+  for (const [ket, ok] of cekSegar) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* --------------------------- laci panel admin --------------------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  const hla = await ujiLaciAdmin()
+  const cekLaci = [
+    ['tombol garis tiga ada', hla.adaTombol],
+    ['garis tiga tidak disembunyikan di layar lebar', hla.tampilDiLayarLebar],
+    ['laci terbuka saat ditekan', hla.terbuka],
+    ['panelnya bernada gelap', hla.panelGelap],
+    ['ada judul kelompok Workspace dan Rujukan', hla.adaJudulKelompok],
+    ['halaman di luar bilah atas ikut tercantum', hla.adaHalamanTersembunyi],
+    ['halaman yang sedang dibuka ditandai', hla.adaPenandaAktif],
+  ]
+  const rusakLaci = cekLaci.filter(([, ok]) => !ok)
+  gagal += rusakLaci.length
+  console.log((rusakLaci.length ? 'GAGAL  ' : 'OK     ') + 'laci panel Kemahasiswaan')
+  for (const [ket, ok] of cekLaci) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* -------------------- penanda kesegaran data panel admin ---------------- */
+  /* Paling akhir: uji ini memutuskan satu pengajuan koreksi untuk membuktikan
+     penandanya bergeser, dan itu mengubah keadaan bersama. */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  const hsd = await ujiStatusData()
+  const cekStatus = [
+    ['penanda "Terakhir diperbarui" tampil', hsd.adaPenanda],
+    ['zona waktunya ditulis tegas (WIB)', hsd.adaZona],
+    ['ada keterangan relatif yang berdetak', hsd.adaRelatif],
+    ['ada tombol segarkan di sebelahnya', hsd.adaTombolSegarkan],
+    ['penandanya bergeser saat data berubah', hsd.bergeserSaatDataBerubah],
+  ]
+  const rusakStatus = cekStatus.filter(([, ok]) => !ok)
+  gagal += rusakStatus.length
+  console.log((rusakStatus.length ? 'GAGAL  ' : 'OK     ') + 'kesegaran data panel admin')
+  for (const [ket, ok] of cekStatus) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ------------------ Ringkasan admin: hemat gulir di ponsel --------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  const hlo = await ujiLipatOverview()
+  const cekLipat = [
+    ['angka: kartu pertama tetap terlihat', hlo.angka.kartuPertamaTetapTampil],
+    ['angka: ada kaki lipat di dalam kartu', hlo.angka.adaKaki],
+    ['angka: ringkasannya tertulis di kaki itu', hlo.angka.ringkasTertulis],
+    ['angka: dua kartu lain terlipat saat dibuka', hlo.angka.terlipatAwal],
+    ['angka: membentang setelah ditekan', hlo.angka.terbukaSetelahDitekan],
+    ['angka: tetap utuh di layar lebar', hlo.angka.tetapUtuhDiLayarLebar],
+    ['angka: kakinya hanya ada di ponsel', hlo.angka.kakiKhususPonsel],
+    ['halaman: ada tombol berbentuk kartu', hlo.halaman.adaTombol],
+    ['halaman: tombolnya hanya ada di ponsel', hlo.halaman.tombolKhususPonsel],
+    ['halaman: lima kartu terlipat saat dibuka', hlo.halaman.limaTerlipatAwal],
+    ['halaman: semuanya tampil setelah ditekan', hlo.halaman.tidakAdaYangTersembunyiSesudah],
+    ['halaman: tetap utuh di layar lebar', hlo.halaman.tetapUtuhDiLayarLebar],
+  ]
+  const rusakLipat = cekLipat.filter(([, ok]) => !ok)
+  gagal += rusakLipat.length
+  console.log((rusakLipat.length ? 'GAGAL  ' : 'OK     ') + 'Ringkasan admin di ponsel')
+  for (const [ket, ok] of cekLipat) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
 
   console.log(gagal ? '\n' + gagal + ' rute bermasalah' : '\nSeluruh rute merender tanpa galat')
   process.exit(0)

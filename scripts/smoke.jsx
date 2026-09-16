@@ -285,18 +285,26 @@ export async function ujiLoncengAdmin() {
   hasil.panelTerbuka = !!panel()
   const tautan = panel() ? [...panel().querySelectorAll('a')] : []
   hasil.jumlahBaris = tautan.length
-  hasil.semuaKeInput = tautan.every((a) => a.getAttribute('href').startsWith('/admin/nilai?'))
+  /* Tidak lagi semuanya ke halaman input: baris "Perlu ditinjau" menuju Data
+     Mahasiswa dan Angkatan. Yang dijaga: tiap baris menuju SUATU halaman panel
+     ini, tidak ada yang menggantung. */
+  hasil.semuaPunyaTujuan = tautan.every((a) => a.getAttribute('href').startsWith('/admin/'))
   hasil.adaKoreksi = /Pengajuan koreksi/.test(panel()?.textContent ?? '')
   hasil.adaBelumDinilai = /Belum dinilai/.test(panel()?.textContent ?? '')
+  /* Dua baris yang dipindahkan dari kartu "Requires Review". */
+  hasil.adaPerluDitinjau = /Perlu ditinjau/.test(panel()?.textContent ?? '')
+  hasil.adaAmbang = /belum berhak atas sertifikat/.test(panel()?.textContent ?? '')
+  hasil.adaSiapDikunci = /siap dikunci/.test(panel()?.textContent ?? '')
 
   /* Tiga jenis tautan yang berbeda perlakuan:
      - koreksi  → membuka tab Pengajuan koreksi
      - tunggal  → kelompok yang tinggal satu mahasiswa, NIM-nya ikut dibawa
      - kelompok → sasaran input biasa */
   const semua = tautan.map((a) => a.getAttribute('href'))
-  hasil.tautanKoreksi = semua.find((h) => h.includes('tab=koreksi')) ?? null
-  hasil.tautanTunggal = semua.find((h) => h.includes('cari=') && !h.includes('tab=koreksi')) ?? null
-  hasil.tautanKelompok = semua.find((h) => !h.includes('cari=') && !h.includes('tab=koreksi')) ?? null
+  const keInput = semua.filter((h) => h.startsWith('/admin/nilai?'))
+  hasil.tautanKoreksi = keInput.find((h) => h.includes('tab=koreksi')) ?? null
+  hasil.tautanTunggal = keInput.find((h) => h.includes('cari=') && !h.includes('tab=koreksi')) ?? null
+  hasil.tautanKelompok = keInput.find((h) => h.includes('semester=') && !h.includes('cari=') && !h.includes('tab=koreksi')) ?? null
 
   lepas()
   return hasil
@@ -491,6 +499,176 @@ export async function ujiPenyuntingFoto(rute) {
   await klik(pakai)
   hasil.tertutupSesudah = !penyunting()
   hasil.adaPratinjau = /Siap disimpan/.test(el.textContent)
+
+  lepas()
+  return hasil
+}
+
+/**
+ * Tombol "Segarkan data" di Data Mahasiswa.
+ *
+ * Yang diuji bukan keberadaan tombolnya, melainkan akibatnya: penanda waktu
+ * baru muncul SETELAH ditekan. Kalau penandanya sudah ada sejak awal, tombol
+ * itu hanya hiasan yang mengaku melakukan sesuatu.
+ */
+export async function ujiSegarkanData() {
+  const { el, lepas } = await pasang('/admin/mahasiswa')
+  const hasil = {}
+
+  const tombol = [...el.querySelectorAll('button')].find((b) =>
+    b.textContent.includes('Segarkan data'),
+  )
+  hasil.adaTombol = !!tombol
+  hasil.tanpaPenandaAwal = !/Terakhir disegarkan/.test(el.textContent)
+
+  await klik(tombol)
+  hasil.adaPenandaSesudah = /Terakhir disegarkan \d{2}[.:]\d{2}/.test(el.textContent)
+
+  /* Daftar mahasiswanya harus tetap utuh sesudah disegarkan — memuat ulang
+     tidak boleh mengosongkan tabel. */
+  hasil.daftarTetapAda = /mahasiswa · rata-rata/.test(el.textContent)
+
+  lepas()
+  return hasil
+}
+
+/**
+ * Laci panel Kemahasiswaan: peta lengkap yang tersembunyi di balik garis tiga.
+ *
+ * Yang dijaga: garis tiganya tidak disembunyikan pada layar lebar (dulu
+ * md:hidden, hanya muncul di ponsel), panelnya bernada gelap, dan tiga halaman
+ * yang tidak ada di bilah atas tetap bisa ditemukan dari sini.
+ */
+export async function ujiLaciAdmin() {
+  const { el, lepas } = await pasang('/admin')
+  const hasil = {}
+
+  const tombol = el.querySelector('button[aria-label="Buka menu navigasi"]')
+  hasil.adaTombol = !!tombol
+  hasil.tampilDiLayarLebar = !!tombol && !tombol.className.split(' ').includes('md:hidden')
+
+  await klik(tombol)
+  const panel = el.querySelector('[role="dialog"][aria-label="Menu navigasi"]')
+  hasil.terbuka = !!panel
+  hasil.panelGelap = !!panel && /bg-brand-deep/.test(panel.className)
+
+  const teks = panel?.textContent ?? ''
+  hasil.adaJudulKelompok = /Workspace/.test(teks) && /Rujukan/.test(teks)
+
+  const tujuan = panel ? [...panel.querySelectorAll('a')].map((a) => a.getAttribute('href')) : []
+  hasil.adaHalamanTersembunyi = ['/admin/kurikulum', '/admin/program-studi', '/admin/log'].every((h) =>
+    tujuan.includes(h),
+  )
+  hasil.adaPenandaAktif = !!panel?.querySelector('[aria-current="page"]')
+
+  lepas()
+  return hasil
+}
+
+/**
+ * Penanda "Terakhir diperbarui" di panel Kemahasiswaan.
+ *
+ * Yang dijaga bukan sekadar teksnya muncul, melainkan bahwa ia MENGIKUTI data:
+ * begitu ada perubahan, jam yang tertulis ikut bergeser. Penanda yang diam
+ * saat datanya berubah justru berbahaya — ia meyakinkan pembacanya bahwa yang
+ * di layar sudah mutakhir padahal belum.
+ */
+export async function ujiStatusData() {
+  const { el, lepas } = await pasang('/admin')
+  const hasil = {}
+
+  const baris = () => {
+    const t = el.textContent
+    const m = t.match(/Terakhir diperbarui [^·]+/)
+    return m ? m[0].trim() : null
+  }
+
+  hasil.adaPenanda = !!baris()
+  hasil.adaZona = /WIB/.test(el.textContent)
+  hasil.adaRelatif = /baru saja|menit lalu|jam lalu/.test(el.textContent)
+  hasil.adaTombolSegarkan = !!el.querySelector('button[aria-label="Segarkan data sekarang"]')
+
+  /* Ubah data lewat jalur yang sebenarnya — menyimpan satu nilai — lalu
+     pastikan penandanya bergeser. Jangan bergantung pada adanya pengajuan
+     koreksi yang menunggu: uji sebelumnya mungkin sudah memutuskan semuanya. */
+  const { terakhirDiperbarui, simpanBatch } = await import('../src/lib/store')
+  const { getAspekSemester, getKomponen } = await import('../src/lib/curriculum')
+  const { STUDENTS } = await import('../src/lib/mockData')
+
+  const sebelum = terakhirDiperbarui().getTime()
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 5))
+  })
+
+  const mhs = STUDENTS.find((m) => m.semesterAktif >= 1)
+  const aspek = getAspekSemester(1)[0]
+  const komponen = getKomponen(aspek.id)[0]
+  await act(async () => {
+    simpanBatch({
+      sumber: komponen.sumber,
+      semester: 1,
+      angkatanId: mhs.angkatanId,
+      aktor: 'Uji',
+      cara: 'manual',
+      entri: [{ nim: mhs.nim, komponenId: komponen.id, nilai: 81 }],
+    })
+  })
+
+  hasil.bergeserSaatDataBerubah = terakhirDiperbarui().getTime() > sebelum
+
+  lepas()
+  return hasil
+}
+
+/**
+ * Dua bagian Ringkasan yang dilipat di ponsel.
+ *
+ * Yang dijaga: keduanya terlipat saat dibuka di layar kecil, membentang setelah
+ * ditekan, DAN tetap membawa kelas sm: — tanpa itu, melipatnya akan ikut
+ * terbawa ke layar lebar dan justru menambah satu ketukan di sana.
+ */
+export async function ujiLipatOverview() {
+  const { el, lepas } = await pasang('/admin')
+  const hasil = {}
+
+  /* ---------------------------- angka utama ------------------------------ */
+  /* Kartu pertama selalu terlihat; dua sisanya dilipat di baliknya, persis
+     pola kartu "Nilai akhir" di panel mahasiswa. */
+  const kakiAngka = el.querySelector('button[aria-controls="angka-lain"]')
+  const wadahAngka = () => el.querySelector('#angka-lain')
+
+  hasil.angka = {
+    adaKaki: !!kakiAngka,
+    kakiKhususPonsel: !!kakiAngka && kakiAngka.className.split(' ').includes('sm:hidden'),
+    ringkasTertulis: !!kakiAngka && /rata-rata/.test(kakiAngka.textContent),
+    kartuPertamaTetapTampil: /Mahasiswa terpantau/.test(el.textContent),
+    terlipatAwal: !!wadahAngka() && wadahAngka().className.split(' ').includes('hidden'),
+    tetapUtuhDiLayarLebar: !!wadahAngka() && wadahAngka().className.includes('sm:contents'),
+  }
+  await klik(kakiAngka)
+  hasil.angka.terbukaSetelahDitekan = wadahAngka()?.className.split(' ').includes('grid') ?? false
+
+  /* ----------------------------- more pages ------------------------------ */
+  const tombolHalaman = el.querySelector('button[aria-controls="halaman-lain"]')
+  const kartuTersembunyi = () =>
+    [...el.querySelectorAll('#halaman-lain > li')].filter((li) =>
+      li.className.split(' ').includes('hidden'),
+    ).length
+
+  hasil.halaman = {
+    adaTombol: !!tombolHalaman,
+    tombolKhususPonsel:
+      !!tombolHalaman && tombolHalaman.closest('li').className.split(' ').includes('sm:hidden'),
+    limaTerlipatAwal: kartuTersembunyi() === 5,
+    /* Dicocokkan per kata, bukan per potongan teks: 'sm:hidden' pada baris
+       tombol mengandung kata 'hidden' tetapi bukan kelas yang dimaksud. */
+    tetapUtuhDiLayarLebar: [...el.querySelectorAll('#halaman-lain > li')].every((li) => {
+      const kelas = li.className.split(' ')
+      return !kelas.includes('hidden') || kelas.includes('sm:block')
+    }),
+  }
+  await klik(tombolHalaman)
+  hasil.halaman.tidakAdaYangTersembunyiSesudah = kartuTersembunyi() === 0
 
   lepas()
   return hasil

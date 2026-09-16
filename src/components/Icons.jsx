@@ -275,6 +275,13 @@ export const IconPencil = (p) => (
   </Svg>
 )
 
+export const IconRefresh = (p) => (
+  <Svg {...p}>
+    <path d="M20.4 12a8.4 8.4 0 1 1-2.46-5.94" />
+    <path d="M20.4 4.2v4.6h-4.6" />
+  </Svg>
+)
+
 export const IconUndo = (p) => (
   <Svg {...p}>
     <path d="M4.4 9.6h8.8a5.6 5.6 0 1 1 0 11.2H7" />

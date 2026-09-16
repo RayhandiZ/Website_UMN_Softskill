@@ -12,7 +12,14 @@ import { IconLogo, IconX } from './Icons'
      tertinggal di tombol garis tiga di belakang lapisan gelap.
    -------------------------------------------------------------------------- */
 
-export default function Laci({ buka, onTutup, label = 'Menu navigasi', children }) {
+/**
+ * @param nada 'terang' — panel putih, dipakai panel mahasiswa.
+ *             'gelap'  — panel biru tua, dipakai panel Kemahasiswaan agar
+ *                        senada dengan bilah atasnya yang juga biru.
+ */
+export default function Laci({ buka, onTutup, label = 'Menu navigasi', nada = 'terang', children }) {
+  const gelap = nada === 'gelap'
+
   const panelRef = useRef(null)
 
   /* Penutup disimpan di ref: bila induknya mengirim fungsi panah baru setiap
@@ -53,9 +60,17 @@ export default function Laci({ buka, onTutup, label = 'Menu navigasi', children 
         aria-modal="true"
         aria-label={label}
         tabIndex={-1}
-        className="absolute inset-y-0 left-0 flex w-[84%] max-w-[320px] flex-col bg-surface shadow-pop outline-none animate-geser"
+        className={
+          'absolute inset-y-0 left-0 flex w-[84%] max-w-[320px] flex-col shadow-pop outline-none animate-geser ' +
+          (gelap ? 'bg-brand-deep text-white' : 'bg-surface')
+        }
       >
-        <div className="flex h-[64px] shrink-0 items-center justify-between gap-3 bg-brand px-4 text-white">
+        <div
+          className={
+            'flex h-[64px] shrink-0 items-center justify-between gap-3 px-4 text-white ' +
+            (gelap ? 'border-b border-white/10' : 'bg-brand')
+          }
+        >
           <span className="flex items-center gap-2.5">
             <IconLogo size={32} />
             <span className="text-[14px] font-extrabold tracking-tight">

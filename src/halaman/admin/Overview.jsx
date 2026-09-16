@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '../../components/Ui'
 import MutuDonut from '../../components/charts/MutuDonut'
 import {
   IconBuilding,
   IconCertificate,
+  IconChevronDown,
   IconChevronRight,
   IconDocument,
   IconList,
@@ -13,14 +14,11 @@ import {
 } from '../../components/Icons'
 import { CONFIG } from '../../lib/config'
 import {
-  COHORTS,
-  PENGAJUAN_KOREKSI,
   PERIODE_AKTIF,
   STUDENTS,
   kelengkapanMatriks,
   labelPeriode,
   ringkas,
-  transkripOf,
 } from '../../lib/mockData'
 import { useStore } from '../../lib/store'
 import { useAuth } from '../../lib/auth'
@@ -39,7 +37,7 @@ import { useAuth } from '../../lib/auth'
 /* Satu angka besar, satu kalimat penjelas, dan — bila bermakna — satu
    persentase dengan bilah tipis. Persentasenya selalu ditulis angkanya, bilah
    hanya membantu membandingkan sekilas. */
-function Angka({ nilai, satuan, judul, keterangan, persen, persenLabel }) {
+function Angka({ nilai, satuan, judul, keterangan, persen, persenLabel, kaki }) {
   return (
     <Card className="px-6 py-7">
       <p className="text-[15px] font-semibold text-ink-2">{judul}</p>
@@ -65,34 +63,48 @@ function Angka({ nilai, satuan, judul, keterangan, persen, persenLabel }) {
         </div>
       ) : null}
 
-      <p className="mt-3 text-[14.5px] leading-relaxed text-ink-2">{keterangan}</p>
+      {/* Bersyarat: tanpa ini, kartu yang keterangannya kosong tetap menyisakan
+          satu baris kosong beserta jaraknya. */}
+      {keterangan ? (
+        <p className="mt-3 text-[14.5px] leading-relaxed text-ink-2">{keterangan}</p>
+      ) : null}
+
+      {/* Kaki kartu — tempat tombol lipat, mengikuti pola kartu "Nilai akhir"
+          di panel mahasiswa. Hanya kartu pertama yang memilikinya. */}
+      {kaki}
     </Card>
   )
 }
 
-/* Baris tugas: kalimat lengkap, lalu tautan yang menyebut ke mana perginya. */
-function Tugas({ jumlah, kalimat, tautan, ke }) {
+/* Baris kaki di dalam kartu: ringkasan di kiri, tombol lipat di kanan. Hanya
+   muncul di ponsel; di layar lebar seluruh kartu memang sudah terlihat. */
+function KakiLipat({ buka, onToggle, idIsi, ringkas }) {
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-6 py-5 last:border-0">
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-soft text-[17px] font-extrabold text-brand-ink tabular-nums">
-        {jumlah}
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={buka}
+      aria-controls={idIsi}
+      className="mt-4 flex w-full items-center gap-2 border-t border-line pt-3.5 text-left sm:hidden"
+    >
+      <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink-2">{ringkas}</span>
+      <span className="shrink-0 text-[13.5px] font-bold text-brand-ink">
+        {buka ? 'Tutup' : 'Rincian'}
       </span>
-      <span className="min-w-[240px] flex-1 text-[15.5px] leading-relaxed text-ink">{kalimat}</span>
-      <Link
-        href={ke}
-        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[15px] font-bold text-brand-ink underline underline-offset-4 hover:bg-surface-2"
-      >
-        {tautan}
-        <IconChevronRight size={17} />
-      </Link>
-    </li>
+      <IconChevronDown
+        size={17}
+        className={'shrink-0 text-brand-ink transition-transform ' + (buka ? 'rotate-180' : '')}
+      />
+    </button>
   )
 }
 
 /* Tautan ke halaman lain — judul besar, satu kalimat, dan "Lihat selengkapnya". */
-function Pintu({ ke, judul, keterangan, icon: Icon }) {
+function Pintu({ ke, judul, keterangan, icon: Icon, sembunyi = false }) {
   return (
-    <li>
+    /* Kelas sembunyi dipasang pada <li>-nya sendiri, bukan pada pembungkus
+       tambahan: <li> di dalam <li> bukan markup yang sah. */
+    <li className={sembunyi ? 'hidden sm:block' : undefined}>
       <Link
         href={ke}
         className="flex h-full flex-col rounded-2xl border border-line bg-surface px-6 py-6 transition hover:border-brand-ink hover:bg-surface-2"
@@ -120,15 +132,10 @@ export default function Overview() {
 
   const angka = useMemo(() => ringkas(rows), [rows])
 
-  const belumMasuk = useMemo(() => {
-    let sisa = 0
-    for (const b of kelengkapanMatriks(rows)) {
-      for (const s of Object.values(b.sumber)) sisa += s.total - s.terisi
-    }
-    return sisa
-  }, [rows])
-
-  const koreksi = PENGAJUAN_KOREKSI.filter((k) => k.status === 'menunggu').length
+  /* Dua bagian yang paling memanjangkan gulir di ponsel. Di layar >= 640px
+     keduanya terbentang sendiri dan tombolnya tidak dirender sama sekali. */
+  const [bukaAngka, setBukaAngka] = useState(false)
+  const [bukaHalaman, setBukaHalaman] = useState(false)
 
   const bagi = (n) => (angka.total ? Math.round((n / angka.total) * 100) : 0)
   const persenLengkap = useMemo(() => {
@@ -142,59 +149,6 @@ export default function Overview() {
     }
     return total ? Math.round((terisi / total) * 100) : 0
   }, [rows])
-
-  const perluPerhatian = useMemo(
-    () =>
-      rows.filter((s) => {
-        if (s.semesterAktif < CONFIG.TOTAL_SEMESTER_PROGRAM) return false
-        const n = transkripOf(s).akhir.nilai
-        return n != null && n < CONFIG.AMBANG_SERTIFIKAT
-      }).length,
-    [rows],
-  )
-
-  const siapDikunci = useMemo(
-    () =>
-      COHORTS.filter(
-        (c) =>
-          c.status === 'aktif' &&
-          c.semesterAktif >= CONFIG.TOTAL_SEMESTER_PROGRAM &&
-          rows.some((s) => s.angkatanId === c.id),
-      ).length,
-    [rows],
-  )
-
-  const tugas = [
-    belumMasuk > 0 && {
-      jumlah: belumMasuk.toLocaleString('id-ID'),
-      kalimat: 'nilai komponen asesmen belum dimasukkan oleh dosen atau unit penilai.',
-      tautan: 'Masukkan nilai',
-      ke: '/admin/nilai',
-    },
-    koreksi > 0 && {
-      jumlah: koreksi,
-      kalimat: 'pengajuan koreksi nilai dari mahasiswa menunggu keputusan Anda.',
-      tautan: 'Tinjau pengajuan',
-      ke: '/admin/nilai',
-    },
-    perluPerhatian > 0 && {
-      jumlah: perluPerhatian.toLocaleString('id-ID'),
-      kalimat:
-        'mahasiswa sudah sampai Semester ' +
-        CONFIG.TOTAL_SEMESTER_PROGRAM +
-        ' tetapi nilainya masih di bawah ' +
-        CONFIG.AMBANG_SERTIFIKAT +
-        ', sehingga belum berhak atas sertifikat.',
-      tautan: 'Lihat daftarnya',
-      ke: '/admin/mahasiswa',
-    },
-    siapDikunci > 0 && {
-      jumlah: siapDikunci,
-      kalimat: 'angkatan sudah menuntaskan tiga semester dan bisa dikunci untuk penerbitan sertifikat.',
-      tautan: 'Buka angkatan',
-      ke: '/admin/angkatan',
-    },
-  ].filter(Boolean)
 
   return (
     <div className="space-y-8">
@@ -211,7 +165,22 @@ export default function Overview() {
           persen={persenLengkap}
           persenLabel="Nilai yang sudah masuk"
           // keterangan="Tersebar di empat fakultas, angkatan 2024 sampai 2026."
+          kaki={
+            <KakiLipat
+              buka={bukaAngka}
+              onToggle={() => setBukaAngka((v) => !v)}
+              idIsi="angka-lain"
+              ringkas={'rata-rata ' + (angka.rata ?? '—') + ' · ' + angka.final.toLocaleString('id-ID') + ' final'}
+            />
+          }
         />
+
+        {/* sm:contents melebur pembungkus ini di layar lebar, sehingga kedua
+            kartu kembali menjadi anggota grid induknya seperti biasa. */}
+        <div
+          id="angka-lain"
+          className={(bukaAngka ? 'grid ' : 'hidden ') + 'gap-5 sm:contents'}
+        >
         <Angka
           judul="Rata-rata nilai softskill"
           nilai={angka.rata ?? '—'}
@@ -228,6 +197,7 @@ export default function Overview() {
           persenLabel="Sudah dikunci"
           // keterangan="Mahasiswa yang seluruh sepuluh aspeknya sudah dinilai dan dikunci."
         />
+        </div>
       </section>
 
       {/* -------------------------------- sebaran -------------------------------- */}
@@ -235,28 +205,10 @@ export default function Overview() {
         <MutuDonut huruf={angka.huruf} totalMahasiswa={angka.total} />
       </section>
 
-      {/* ---------------------------- perlu dikerjakan --------------------------- */}
-      <section>
-        <h2 className="mb-3 text-[25px] font-extrabold tracking-tight text-ink">Requires Review</h2>
-        <Card className="overflow-hidden">
-          {tugas.length ? (
-            <ul>
-              {tugas.map((t) => (
-                <Tugas key={t.tautan + t.kalimat} {...t} />
-              ))}
-            </ul>
-          ) : (
-            <p className="px-6 py-8 text-[15.5px] leading-relaxed text-ink-2">
-              Tidak ada pekerjaan yang tertunda. Seluruh nilai sudah masuk dan tidak ada pengajuan koreksi.
-            </p>
-          )}
-        </Card>
-      </section>
-
       {/* ------------------------------ halaman lain ----------------------------- */}
       <section>
         <h2 className="mb-3 text-[25px] font-extrabold tracking-tight text-ink">More Pages</h2>
-        <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <ul id="halaman-lain" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           <Pintu
             ke="/admin/nilai"
             icon={IconUpload}
@@ -264,35 +216,57 @@ export default function Overview() {
             keterangan="Masukkan nilai satu per satu, atau unggah rekap dari Excel."
           />
           <Pintu
+            sembunyi={!bukaHalaman}
             ke="/admin/mahasiswa"
             icon={IconUsers}
             judul="Data Mahasiswa"
             keterangan="Cari mahasiswa, lihat nilainya, dan buka transkrip lengkapnya."
           />
           <Pintu
+            sembunyi={!bukaHalaman}
             ke="/admin/program-studi"
             icon={IconBuilding}
             judul="Program Studi"
             keterangan="Bandingkan capaian antar program studi, fakultas, dan angkatan."
           />
           <Pintu
+            sembunyi={!bukaHalaman}
             ke="/admin/angkatan"
             icon={IconCertificate}
             judul="Angkatan &amp; Sertifikat"
             keterangan="Kunci angkatan yang sudah selesai, lalu terbitkan sertifikatnya."
           />
           <Pintu
+            sembunyi={!bukaHalaman}
             ke="/admin/kurikulum"
             icon={IconDocument}
             judul="Kurikulum CPMK"
             keterangan="Sepuluh aspek penilaian, komponen asesmen, dan bobotnya."
           />
           <Pintu
+            sembunyi={!bukaHalaman}
             ke="/admin/log"
             icon={IconList}
             judul="Log Aktivitas"
             keterangan="Catatan setiap perubahan nilai beserta siapa yang mengubahnya."
           />
+          {/* Tombol berbentuk kartu, jadi ia terbaca sebagai bagian dari
+              daftar — bukan kendali yang melayang di atasnya. */}
+          <li className="sm:hidden">
+            <button
+              type="button"
+              onClick={() => setBukaHalaman((v) => !v)}
+              aria-expanded={bukaHalaman}
+              aria-controls="halaman-lain"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line px-6 py-4 text-[14px] font-bold text-brand-ink transition hover:border-brand-ink"
+            >
+              {bukaHalaman ? 'Sembunyikan' : 'Tampilkan 5 halaman lainnya'}
+              <IconChevronDown
+                size={17}
+                className={'transition-transform ' + (bukaHalaman ? 'rotate-180' : '')}
+              />
+            </button>
+          </li>
         </ul>
       </section>
     </div>

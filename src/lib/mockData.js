@@ -688,3 +688,27 @@ export function pekerjaanPenilaian(rows = STUDENTS) {
      terbitnya nilai akhir. */
   return hasil.sort((a, b) => b.kosong - a.kosong)
 }
+
+/* --------------------------------------------------------------------------
+   Dua hal yang perlu ditinjau Kemahasiswaan, di luar urusan memasukkan nilai.
+
+   Keduanya bukan pekerjaan mengetik melainkan keputusan: menindaklanjuti
+   mahasiswa yang nilainya belum cukup, dan mengunci angkatan yang sudah
+   tuntas. Karena itu dikumpulkan terpisah dari pekerjaanPenilaian().
+   -------------------------------------------------------------------------- */
+export function perluDitinjau(rows = STUDENTS) {
+  const dibawahAmbang = rows.filter((s) => {
+    if (s.semesterAktif < CONFIG.TOTAL_SEMESTER_PROGRAM) return false
+    const n = transkripOf(s).akhir.nilai
+    return n != null && n < CONFIG.AMBANG_SERTIFIKAT
+  }).length
+
+  const siapDikunci = COHORTS.filter(
+    (c) =>
+      c.status === 'aktif' &&
+      c.semesterAktif >= CONFIG.TOTAL_SEMESTER_PROGRAM &&
+      rows.some((s) => s.angkatanId === c.id),
+  ).length
+
+  return { dibawahAmbang, siapDikunci }
+}

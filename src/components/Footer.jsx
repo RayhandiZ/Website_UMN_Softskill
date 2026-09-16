@@ -42,7 +42,7 @@ export default function Footer({ pintasan = [] }) {
       <div className="mx-auto grid max-w-shell gap-x-10 gap-y-9 px-5 py-10 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto]">
         {pintasan.length ? (
           <section>
-            <h2 className="text-[13.5px] font-bold">Pintasan</h2>
+            <h2 className="text-[13.5px] font-bold">Short Cuts</h2>
             <ul className="mt-3 flex flex-wrap gap-1">
               {pintasan.map((p) => (
                 <Pintasan key={p.ke} {...p} />
@@ -95,7 +95,7 @@ export default function Footer({ pintasan = [] }) {
       </div>
 
       <div className="border-t border-white/15 py-4 text-center text-[13px] text-white/70">
-        © Copyright Universitas Multimedia Nusantara. Designed by Rayhandi Zulmi
+        © Universitas Multimedia Nusantara. By Rayhandi Zulmi
       </div>
     </footer>
   )

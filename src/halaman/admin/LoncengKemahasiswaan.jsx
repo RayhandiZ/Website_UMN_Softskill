@@ -2,9 +2,23 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { IconBell, IconChevronRight, IconInfo, IconPencil, IconUndo } from '../../components/Icons'
+import {
+  IconAlert,
+  IconBell,
+  IconCertificate,
+  IconChevronRight,
+  IconInfo,
+  IconPencil,
+  IconUndo,
+} from '../../components/Icons'
 import { SUMBER, getAspek, getKomponenById } from '../../lib/curriculum'
-import { PENGAJUAN_KOREKSI, getStudentByNim, pekerjaanPenilaian } from '../../lib/mockData'
+import {
+  PENGAJUAN_KOREKSI,
+  getStudentByNim,
+  pekerjaanPenilaian,
+  perluDitinjau,
+} from '../../lib/mockData'
+import { CONFIG } from '../../lib/config'
 import { useStore } from '../../lib/store'
 
 /* --------------------------------------------------------------------------
@@ -83,7 +97,31 @@ export default function LoncengKemahasiswaan() {
 
   const koreksi = PENGAJUAN_KOREKSI.filter((k) => k.status === 'menunggu')
   const pekerjaan = useMemo(() => pekerjaanPenilaian(), [])
-  const jumlah = koreksi.length + pekerjaan.length
+
+  /* Dua keputusan yang dulu berdiri sendiri sebagai kartu "Requires Review" di
+     Ringkasan. Dipindah ke sini karena kartu itu mengulang angka yang sama
+     dengan daftar "Belum dinilai" di panel ini. */
+  const tinjau = useMemo(() => perluDitinjau(), [])
+  const tinjauan = [
+    tinjau.dibawahAmbang > 0 && {
+      id: 'ambang',
+      href: '/admin/mahasiswa',
+      ikon: IconAlert,
+      judul: tinjau.dibawahAmbang + ' mahasiswa belum berhak atas sertifikat',
+      rinci:
+        'Sudah sampai Semester ' + CONFIG.TOTAL_SEMESTER_PROGRAM + ', nilainya masih di bawah ' +
+        CONFIG.AMBANG_SERTIFIKAT,
+    },
+    tinjau.siapDikunci > 0 && {
+      id: 'kunci',
+      href: '/admin/angkatan',
+      ikon: IconCertificate,
+      judul: tinjau.siapDikunci + ' angkatan siap dikunci',
+      rinci: 'Tiga semester sudah tuntas — sertifikatnya bisa diterbitkan',
+    },
+  ].filter(Boolean)
+
+  const jumlah = koreksi.length + pekerjaan.length + tinjauan.length
 
   useEffect(() => {
     if (!buka) return
@@ -152,6 +190,26 @@ export default function LoncengKemahasiswaan() {
                       ikon={IconUndo}
                       judul={k.nama + ' · ' + k.nim}
                       rinci={k.komponenLabel}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {tinjauan.length ? (
+              <section className="border-b border-line pb-2">
+                <h3 className="px-2 pb-1 pt-2 text-[11.5px] font-bold uppercase tracking-[.06em] text-ink-3">
+                  Perlu ditinjau
+                </h3>
+                <ul>
+                  {tinjauan.map((t) => (
+                    <Baris
+                      key={t.id}
+                      href={t.href}
+                      onPilih={tutup}
+                      ikon={t.ikon}
+                      judul={t.judul}
+                      rinci={t.rinci}
                     />
                   ))}
                 </ul>

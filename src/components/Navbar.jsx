@@ -24,7 +24,12 @@ import { IconLogo, IconMenu, IconMoon, IconSun } from './Icons'
    Fotonya DITERIMA dari layout, bukan dicari sendiri: yang tahu persis siapa
    pemilik sesi adalah layout, dan dua tempat yang menyusun kunci akun sendiri-
    sendiri bisa berbeda untuk orang yang sama. */
-export default function Navbar({ links = [], aksi = null, foto = null }) {
+/**
+ * @param links     tautan mendatar di bilah atas (layar lebar)
+ * @param kelompok  isi laci, dikelompokkan: [{ judul, item: [{to,label,icon,end,lencana}] }]
+ *                  Bila kosong, laci memakai `links` apa adanya.
+ */
+export default function Navbar({ links = [], kelompok = null, aksi = null, foto = null }) {
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
   const router = useRouter()
@@ -43,7 +48,7 @@ export default function Navbar({ links = [], aksi = null, foto = null }) {
           onClick={() => setLaci(true)}
           aria-label="Buka menu navigasi"
           aria-expanded={laci}
-          className="-ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-white transition hover:bg-white/10 md:hidden"
+          className="-ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-white transition hover:bg-white/10"
         >
           <IconMenu size={23} />
         </button>
@@ -89,29 +94,66 @@ export default function Navbar({ links = [], aksi = null, foto = null }) {
         </div>
       </div>
 
-      <Laci buka={laci} onTutup={() => setLaci(false)}>
-        <nav className="py-2">
-          {links.map((l) => (
-            <TautanNav
-              key={l.to}
-              href={l.to}
-              end={l.end}
-              onClick={() => setLaci(false)}
-              className={({ isActive }) =>
-                'block px-5 py-3.5 text-[16px] font-bold transition ' +
-                (isActive ? 'bg-brand-soft text-brand-ink' : 'text-ink hover:bg-surface-2')
-              }
-            >
-              {l.label}
-            </TautanNav>
+      {/* --------------------------------- laci --------------------------------- */}
+      {/* Panelnya gelap, senada dengan bilah atas. Isinya seluruh tujuan panel
+          ini — termasuk halaman yang di layar hanya dimasuki lewat kartu di
+          Ringkasan. Karena tersembunyi, ia tidak menambah keramaian layar,
+          tetapi memberi peta lengkap bagi yang mencarinya. */}
+      <Laci buka={laci} onTutup={() => setLaci(false)} nada="gelap">
+        <nav className="px-3 py-4">
+          {(kelompok ?? [{ judul: null, item: links }]).map((g, i) => (
+            <div key={g.judul ?? i} className={i ? 'mt-5' : ''}>
+              {g.judul ? (
+                /* Putih 55% = kontras 5,32:1 di atas latar biru tua — masih di
+                   atas ambang 4,5:1 untuk teks kecil. */
+                <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[.12em] text-white/55">
+                  {g.judul}
+                </p>
+              ) : null}
+              <ul className="space-y-0.5">
+                {g.item.map((l) => (
+                  <li key={l.to}>
+                    <TautanNav
+                      href={l.to}
+                      end={l.end}
+                      onClick={() => setLaci(false)}
+                      className={({ isActive }) =>
+                        'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-bold transition ' +
+                        (isActive ? 'bg-white/12 text-white' : 'text-white/75 hover:bg-white/10 hover:text-white')
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          {/* Batang penanda di tepi kiri: pembeda yang tidak
+                              bergantung pada warna latar saja. */}
+                          {isActive ? (
+                            <span
+                              aria-hidden="true"
+                              className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-[var(--accent)]"
+                            />
+                          ) : null}
+                          {l.icon ? <l.icon size={19} className="shrink-0" /> : null}
+                          <span className="truncate">{l.label}</span>
+                          {l.lencana ? (
+                            <span className="ml-auto grid h-5 min-w-[20px] place-items-center rounded-full bg-[var(--accent)] px-1.5 text-[11px] font-extrabold text-[#2b1c00]">
+                              {l.lencana}
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </TautanNav>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
 
-          <span className="my-2 block h-px bg-line" />
+          <span className="my-4 block h-px bg-white/10" />
 
           <Link
             href={profilKe}
             onClick={() => setLaci(false)}
-            className="block px-5 py-3.5 text-[16px] font-bold text-ink transition hover:bg-surface-2"
+            className="block rounded-xl px-3 py-2.5 text-[15px] font-bold text-white/75 transition hover:bg-white/10 hover:text-white"
           >
             Profil
           </Link>
@@ -122,7 +164,7 @@ export default function Navbar({ links = [], aksi = null, foto = null }) {
               logout()
               router.replace('/masuk')
             }}
-            className="block w-full px-5 py-3.5 text-left text-[16px] font-bold text-[var(--critical)] transition hover:bg-surface-2"
+            className="mt-0.5 block w-full rounded-xl px-3 py-2.5 text-left text-[15px] font-bold text-[#ffb4b4] transition hover:bg-white/10"
           >
             Keluar
           </button>

@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import FilterBar, { DEFAULT_FILTER } from '../../components/FilterBar'
 import { Badge, Card, CatatanKaki, EmptyState, HurufBadge, ScoreBar, Select } from '../../components/Ui'
-import { IconChevronDown, IconChevronRight, IconDownload } from '../../components/Icons'
+import { IconChevronDown, IconChevronRight, IconDownload, IconRefresh } from '../../components/Icons'
 import { CONFIG } from '../../lib/config'
 import { susunCSV, unduhBerkas } from '../../lib/csv'
 import { kelayakanSertifikat } from '../../lib/rules'
 import { hurufMutu } from '../../lib/scoring'
 import { filterStudents, ringkas, transkripOf } from '../../lib/mockData'
-import { useStore } from '../../lib/store'
+import { segarkanData, terakhirSegar, useStore } from '../../lib/store'
 
 const PAGE_SIZE = 12
 
@@ -26,7 +26,10 @@ const KOLOM = [
 
 export default function Students() {
   // Ikut menghitung ulang begitu ada nilai yang masuk dari panel Kemahasiswaan.
+  /* Ikut menghitung ulang setiap ada nilai yang tersimpan — dan setiap data
+     disegarkan, karena segarkanData() memakai saluran yang sama. */
   useStore()
+  const segar = terakhirSegar()
   const [filter, setFilter] = useState(DEFAULT_FILTER)
   const [kelengkapan, setKelengkapan] = useState('Semua')
   const [sort, setSort] = useState({ key: 'nilai', dir: 'desc' })
@@ -101,11 +104,28 @@ export default function Students() {
           <p className="mt-1.5 text-[14px] text-ink-2">
             {rows.length.toLocaleString('id-ID')} mahasiswa · rata-rata {r.rata ?? '—'} · {r.final} transkrip final
           </p>
+          {/* Penanda waktu hanya muncul setelah benar-benar disegarkan —
+              menuliskannya sejak awal akan mengaku melakukan sesuatu yang
+              belum terjadi. */}
+          {segar ? (
+            <p className="mt-1 text-[12.5px] text-ink-3">
+              Terakhir disegarkan {segar.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          ) : null}
         </div>
-        <button type="button" className="btn-ghost" onClick={eksporCSV} disabled={!urut.length}>
-          <IconDownload size={17} />
-          Ekspor CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Satu pintu memuat ulang data. Hari ini ia membaca ulang sumber
+              yang ada; saat basis data tersambung, hanya segarkanData() di
+              store yang berubah — tombol ini tidak. */}
+          <button type="button" className="btn-ghost" onClick={segarkanData}>
+            <IconRefresh size={17} />
+            Segarkan data
+          </button>
+          <button type="button" className="btn-ghost" onClick={eksporCSV} disabled={!urut.length}>
+            <IconDownload size={17} />
+            Ekspor CSV
+          </button>
+        </div>
       </div>
 
       <FilterBar value={filter} onChange={setFilter} />

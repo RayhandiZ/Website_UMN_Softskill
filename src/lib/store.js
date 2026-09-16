@@ -24,8 +24,19 @@ const KUNCI = 'sk5c.nilai'
 let versi = 0
 const listeners = new Set()
 
+/* Kapan data terakhir BERUBAH — bukan kapan halaman dibuka.
+
+   Disetel di satu tempat ini karena setiap perubahan, dari mana pun asalnya
+   (nilai tersimpan, koreksi diputuskan, data disegarkan, atau jendela lain
+   menulis lewat peristiwa storage), semuanya bermuara ke sini. Jadi penanda
+   waktunya mustahil tertinggal. */
+let waktuPerubahan = new Date()
+
+export const terakhirDiperbarui = () => waktuPerubahan
+
 function berubah() {
   versi++
+  waktuPerubahan = new Date()
   resetTranskripCache()
   listeners.forEach((fn) => fn())
 }
@@ -304,6 +315,35 @@ export function muatDariPenyimpanan() {
   }
 
   terapkanUlang()
+}
+
+/* ------------------------------ segarkan data ----------------------------- */
+
+/* Kapan data terakhir dibaca ulang. Dibaca komponen lewat useStore(), jadi
+   ikut menyegar sendiri setiap ada perubahan. */
+let waktuSegar = null
+
+export const terakhirSegar = () => waktuSegar
+
+/**
+ * SATU-SATUNYA pintu untuk memuat ulang data mahasiswa.
+ *
+ * Hari ini ia membaca ulang sumber yang ada — perubahan nilai yang tersimpan
+ * di peramban (termasuk yang disimpan jendela lain), lalu memutarnya ulang di
+ * atas data dasar dan membuang seluruh hasil hitungan lama.
+ *
+ * Ketika basis data nanti tersambung, HANYA fungsi ini yang berubah menjadi
+ * pemanggilan API; tombol di halaman, penanda waktunya, dan seluruh komponen
+ * yang ikut menghitung ulang tidak perlu disentuh sama sekali.
+ */
+export function segarkanData() {
+  muatDariPenyimpanan()
+  /* terapkanUlang() sudah dipanggil di dalam muatDariPenyimpanan bila ada
+     perubahan tersimpan. Bila tidak ada, tetap perlu memberi tahu komponen —
+     kalau tidak, menekan tombolnya akan terasa tidak melakukan apa-apa. */
+  waktuSegar = new Date()
+  berubah()
+  return waktuSegar
 }
 
 /** Menghapus seluruh perubahan dan kembali ke data contoh bawaan. */
