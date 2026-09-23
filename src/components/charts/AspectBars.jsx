@@ -2,6 +2,7 @@ import ChartFrame from './ChartFrame'
 import { ScoreBar, Terkunci } from '../Ui'
 import { getArea } from '../../lib/curriculum'
 import { CATATAN_BOBOT_SEMENTARA } from '../../lib/config'
+import { useTeks } from '../../lib/bahasa'
 
 /* Sepuluh aspek CPMK sebagai bar horizontal dengan label nilai langsung.
    Aspek yang semesternya belum tiba TIDAK digambar sebagai bar kosong atau nol
@@ -14,6 +15,7 @@ export default function AspectBars({
   height = 380,
   catatan,
 }) {
+  const t = useTeks()
   return (
     <ChartFrame
       title={title}
@@ -60,7 +62,7 @@ export default function AspectBars({
         })}
       </ul>
       <p className="px-3 pb-1 pt-3 text-[12px] leading-snug text-ink-3 sm:px-4">
-        {catatan ?? 'Warna menandai area pengembangan, bukan peringkat. ' + CATATAN_BOBOT_SEMENTARA}
+        {catatan ?? t('Warna menandai area pengembangan, bukan peringkat.') + ' ' + t(CATATAN_BOBOT_SEMENTARA)}
       </p>
     </ChartFrame>
   )

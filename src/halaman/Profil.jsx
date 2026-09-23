@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Avatar, Badge, Card } from '../components/Ui'
 import { IconAlert, IconCheck, IconChevronDown, IconPencil, IconUpload } from '../components/Icons'
-import { useAuth } from '../lib/auth'
+import { LABEL_PERAN, useAuth } from '../lib/auth'
+import { useTeks } from '../lib/bahasa'
 import { CONFIG } from '../lib/config'
-import { PERIODE_AKTIF, getStudent, labelPeriode, personaAktif } from '../lib/mockData'
+import { SUMBER } from '../lib/curriculum'
+import { PERIODE_AKTIF, getDosenByNip, getStudent, labelPeriode, personaAktif } from '../lib/mockData'
 import { useStore } from '../lib/store'
 import { BATAS_FOTO_MB, bacaFoto, kunciSesi, simpanProfil, useProfil } from '../lib/profil'
 import PenyuntingFoto from '../components/PenyuntingFoto'
 
 /* --------------------------------------------------------------------------
-   Halaman profil untuk DUA peran, satu berkas.
+   Halaman profil untuk TIGA peran, satu berkas.
 
    Susunannya mengambil konsep dari halaman profil E-Learning: judul berisi nama
    dan NIM, bagian-bagian yang bisa dilipat, label di kiri dan kolom isian di
@@ -96,10 +98,16 @@ const TELEPON_SAH = /^[0-9+().\- ]{6,25}$/
 
 export default function Profil() {
   useStore()
+  const t = useTeks()
   const { user, admin } = useAuth()
 
   const mahasiswa = user?.role === 'student'
   const student = mahasiswa ? (getStudent(user?.studentId) ?? personaAktif()) : null
+
+  /* Halaman ini dipakai tiga peran. Yang berbeda hanya identitas dan satu
+     seksi keterangan; seluruh isian yang bisa disunting — telepon, alamat,
+     foto — sama persis, jadi tidak ada alasan membuat tiga halaman. */
+  const dosen = user?.role === 'dosen' ? getDosenByNip(user?.nip) : null
 
   const kunci = kunciSesi(user, student?.nim)
   const tersimpan = useProfil(kunci)
@@ -129,11 +137,11 @@ export default function Profil() {
     setTersimpanPesan(false)
   }, [kunci, tersimpan])
 
-  const nama = mahasiswa ? student.name : admin.name
-  const email = mahasiswa ? student.email : admin.email
+  const nama = mahasiswa ? student.name : (dosen?.nama ?? admin.name)
+  const email = mahasiswa ? student.email : (dosen?.email ?? admin.email)
   const inisial = mahasiswa
     ? student.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-    : 'KH'
+    : (dosen?.inisial ?? 'KH')
 
   const [depan, ...sisa] = nama.split(' ')
   const belakang = sisa.join(' ')
@@ -181,11 +189,11 @@ export default function Profil() {
     const ponsel = form.ponsel.trim()
 
     if (telepon && !TELEPON_SAH.test(telepon)) {
-      setGalat('Nomor telepon hanya boleh berisi angka, spasi, dan tanda + ( ) - .')
+      setGalat(t('Nomor telepon hanya boleh berisi angka, spasi, dan tanda + ( ) - .'))
       return
     }
     if (ponsel && !TELEPON_SAH.test(ponsel)) {
-      setGalat('Nomor ponsel hanya boleh berisi angka, spasi, dan tanda + ( ) - .')
+      setGalat(t('Nomor ponsel hanya boleh berisi angka, spasi, dan tanda + ( ) - .'))
       return
     }
 
@@ -206,7 +214,7 @@ export default function Profil() {
             ) : null}
           </h1>
           <p className="mt-1.5">
-            <Badge tone="brand">{mahasiswa ? 'Mahasiswa' : 'Kemahasiswaan'}</Badge>
+            <Badge tone="brand">{t(LABEL_PERAN[user?.role] ?? 'Kemahasiswaan')}</Badge>
           </p>
         </div>
 
@@ -215,39 +223,51 @@ export default function Profil() {
           onClick={() => setTerbuka(semuaTerbuka ? new Set() : new Set(SEMUA_SEKSI))}
           className="text-[15px] font-bold text-brand-ink underline underline-offset-4 hover:text-brand"
         >
-          {semuaTerbuka ? 'Tutup semua' : 'Buka semua'}
+          {t(semuaTerbuka ? 'Tutup semua' : 'Buka semua')}
         </button>
       </header>
 
       {/* --------------------------------- umum --------------------------------- */}
-      <Seksi judul="Umum" terbuka={terbuka.has('umum')} onToggle={() => toggle('umum')}>
+      <Seksi judul={t('Umum')} terbuka={terbuka.has('umum')} onToggle={() => toggle('umum')}>
         {mahasiswa ? (
           <>
-            <Baris label="Nama depan">
+            <Baris label={t('Nama depan')}>
               <Tetap>{depan}</Tetap>
             </Baris>
-            <Baris label="Nama belakang">
+            <Baris label={t('Nama belakang')}>
               <Tetap>{belakang || '—'}</Tetap>
             </Baris>
-            <Baris label="Nomor induk mahasiswa">
+            <Baris label={t('Nomor induk mahasiswa')}>
               <Tetap angka>{student.nim}</Tetap>
+            </Baris>
+          </>
+        ) : dosen ? (
+          <>
+            <Baris label={t('Nama depan')}>
+              <Tetap>{depan}</Tetap>
+            </Baris>
+            <Baris label={t('Nama belakang')}>
+              <Tetap>{belakang || '—'}</Tetap>
+            </Baris>
+            <Baris label={t('Nomor induk dosen')}>
+              <Tetap angka>{dosen.nip}</Tetap>
             </Baris>
           </>
         ) : (
           <>
-            <Baris label="Unit pengelola">
+            <Baris label={t('Unit pengelola')}>
               <Tetap>{admin.name}</Tetap>
             </Baris>
-            <Baris label="Nama resmi">
+            <Baris label={t('Nama resmi')}>
               <Tetap>{admin.unit}</Tetap>
             </Baris>
-            <Baris label="Penanggung jawab">
+            <Baris label={t('Penanggung jawab')}>
               <Tetap>{admin.officer}</Tetap>
             </Baris>
           </>
         )}
         <Baris
-          label="Alamat email"
+          label={t('Alamat email')}
           // catatan="Kolom abu berasal dari sistem akademik dan tidak dapat diubah di sini."
         >
           <Tetap>{email}</Tetap>
@@ -255,8 +275,8 @@ export default function Profil() {
       </Seksi>
 
       {/* --------------------------------- foto --------------------------------- */}
-      <Seksi judul="Foto profil" terbuka={terbuka.has('foto')} onToggle={() => toggle('foto')}>
-        <Baris label="Foto saat ini">
+      <Seksi judul={t('Foto profil')} terbuka={terbuka.has('foto')} onToggle={() => toggle('foto')}>
+        <Baris label={t('Foto saat ini')}>
           <div className="flex items-center gap-4">
             <Avatar
               initials={inisial}
@@ -266,7 +286,7 @@ export default function Profil() {
             />
             <span className="min-w-0 flex-1">
               <span className="block text-[14.5px] text-ink-2">
-                {tersimpan.foto ? 'Terpasang' : 'Belum ada — inisial nama yang dipakai'}
+                {t(tersimpan.foto ? 'Terpasang' : 'Belum ada, inisial nama yang dipakai')}
               </span>
               {/* Menyunting ulang memakai gambar ASAL yang tersimpan, bukan
                   hasil potongan 256 px — kalau tidak, memperbesar sedikit saja
@@ -278,7 +298,7 @@ export default function Profil() {
                   /* Nama panjangnya dieja untuk pembaca layar: "Edit" sendirian
                      tidak memberi tahu apa yang disunting. Tetap diawali kata
                      yang terlihat, supaya perintah suara tetap cocok. */
-                  aria-label="Edit foto profil"
+                  aria-label={t('Edit foto profil')}
                   className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[13px] font-bold text-ink-2 transition hover:border-brand-ink hover:text-brand-ink"
                 >
                   <IconPencil size={14} />
@@ -290,12 +310,8 @@ export default function Profil() {
         </Baris>
 
         <Baris
-          label="Foto baru"
-          catatan={
-            'JPG, PNG, WebP, atau GIF, Maksimal ' +
-            BATAS_FOTO_MB +
-            ' MB.'
-          }
+          label={t('Foto baru')}
+          catatan={t('JPG, PNG, WebP, atau GIF. Maksimal {mb} MB.', { mb: BATAS_FOTO_MB })}
         >
           <input
             ref={berkasRef}
@@ -356,7 +372,7 @@ export default function Profil() {
                 />
               ) : null}
               <span className="text-[14px] text-ink-2">
-                {form.foto ? 'Siap disimpan' : 'Foto akan dihapus'}
+                {t(form.foto ? 'Siap disimpan' : 'Foto akan dihapus')}
               </span>
               {form.fotoSumber ? (
                 <button
@@ -392,40 +408,62 @@ export default function Profil() {
 
       {/* ------------------------------- akademik ------------------------------- */}
       <Seksi
-        judul={mahasiswa ? 'Akademik' : 'Periode kerja'}
+        judul={t(mahasiswa ? 'Akademik' : dosen ? 'Penugasan mengajar' : 'Periode kerja')}
         terbuka={terbuka.has('akademik')}
         onToggle={() => toggle('akademik')}
       >
         {mahasiswa ? (
           <>
-            <Baris label="Fakultas">
+            <Baris label={t('Fakultas')}>
               <Tetap>{student.faculty}</Tetap>
             </Baris>
-            <Baris label="Program studi">
+            <Baris label={t('Program studi')}>
               <Tetap>
                 {student.program} · {student.jenjang}
               </Tetap>
             </Baris>
-            <Baris label="Angkatan">
+            <Baris label={t('Angkatan')}>
               <Tetap>{student.angkatanLabel}</Tetap>
             </Baris>
-            <Baris label="Semester berjalan">
+            <Baris label={t('Semester berjalan')}>
               <Tetap>
                 Semester {student.semesterAktif} dari {CONFIG.TOTAL_SEMESTER_PROGRAM}
               </Tetap>
             </Baris>
           </>
-        ) : (
+        ) : dosen ? (
           <>
-            <Baris label="Periode aktif">
-              <Tetap>{labelPeriode(PERIODE_AKTIF)}</Tetap>
-            </Baris>
-            <Baris label="Cakupan program">
-              <Tetap>Semester 1 sampai {CONFIG.TOTAL_SEMESTER_PROGRAM}</Tetap>
+            <Baris label={t('Unit asesmen')}>
+              <Tetap>{SUMBER[dosen.sumber]?.nama ?? dosen.sumber}</Tetap>
             </Baris>
             <Baris
-              label="Ambang sertifikat"
-              catatan="Bobot dan ambang diubah lewat berkas konfigurasi oleh pengelola sistem."
+              label={t('Kelas yang dipegang')}
+              catatan={t('Menentukan pengumpulan mana yang masuk ke antrean Anda dan komponen mana yang boleh Anda nilai.')}
+            >
+              <Tetap>
+                Semester {dosen.semester} · {dosen.prodi}
+              </Tetap>
+            </Baris>
+            <Baris label={t('Fakultas')}>
+              <Tetap>{dosen.fakultas}</Tetap>
+            </Baris>
+            <Baris label={t('Periode aktif')}>
+              <Tetap>{labelPeriode(PERIODE_AKTIF)}</Tetap>
+            </Baris>
+          </>
+        ) : (
+          <>
+            <Baris label={t('Periode aktif')}>
+              <Tetap>{labelPeriode(PERIODE_AKTIF)}</Tetap>
+            </Baris>
+            <Baris label={t('Cakupan program')}>
+              <Tetap>
+                {t('Semester 1 sampai {total}', { total: CONFIG.TOTAL_SEMESTER_PROGRAM })}
+              </Tetap>
+            </Baris>
+            <Baris
+              label={t('Ambang sertifikat')}
+              catatan={t('Bobot dan ambang diubah lewat berkas konfigurasi oleh pengelola sistem.')}
             >
               <Tetap angka>{CONFIG.AMBANG_SERTIFIKAT}</Tetap>
             </Baris>
@@ -434,8 +472,8 @@ export default function Profil() {
       </Seksi>
 
       {/* ------------------------------- opsional ------------------------------- */}
-      <Seksi judul="Opsional" terbuka={terbuka.has('opsional')} onToggle={() => toggle('opsional')}>
-        <Baris label="Telepon" htmlFor="telepon">
+      <Seksi judul={t('Opsional')} terbuka={terbuka.has('opsional')} onToggle={() => toggle('opsional')}>
+        <Baris label={t('Telepon')} htmlFor="telepon">
           <input
             id="telepon"
             type="tel"
@@ -446,7 +484,7 @@ export default function Profil() {
             className={KELAS_ISIAN}
           />
         </Baris>
-        <Baris label="Ponsel" htmlFor="ponsel">
+        <Baris label={t('Ponsel')} htmlFor="ponsel">
           <input
             id="ponsel"
             type="tel"
@@ -458,7 +496,7 @@ export default function Profil() {
           />
         </Baris>
         <Baris
-          label="Alamat"
+          label={t('Alamat')}
           htmlFor="alamat"
           // catatan="Hanya dipakai bila Biro Kemahasiswaan perlu menghubungi Anda. Kolom ini boleh dikosongkan."
         >
@@ -490,7 +528,7 @@ export default function Profil() {
           disabled={!berubah}
           className="rounded-xl bg-brand px-5 py-2.5 text-[15px] font-bold text-white transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-45"
         >
-          Perbarui profil
+          {t('Perbarui profil')}
         </button>
         <button
           type="button"
@@ -502,7 +540,7 @@ export default function Profil() {
           disabled={!berubah}
           className="rounded-xl border border-line px-5 py-2.5 text-[15px] font-bold text-ink transition hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          Batal
+          {t('Batal')}
         </button>
 
         {tersimpanPesan ? (
@@ -511,7 +549,7 @@ export default function Profil() {
             className="inline-flex items-center gap-1.5 text-[14.5px] font-bold text-[var(--good)]"
           >
             <IconCheck size={17} />
-            Perubahan tersimpan
+            {t('Perubahan tersimpan')}
           </span>
         ) : null}
       </div>

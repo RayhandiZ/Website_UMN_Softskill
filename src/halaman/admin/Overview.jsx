@@ -5,6 +5,7 @@ import MutuDonut from '../../components/charts/MutuDonut'
 import {
   IconBuilding,
   IconCertificate,
+  IconCheckShield,
   IconChevronDown,
   IconChevronRight,
   IconDocument,
@@ -13,6 +14,7 @@ import {
   IconUsers,
 } from '../../components/Icons'
 import { CONFIG } from '../../lib/config'
+import { useTeks } from '../../lib/bahasa'
 import {
   PERIODE_AKTIF,
   STUDENTS,
@@ -38,20 +40,21 @@ import { useAuth } from '../../lib/auth'
    persentase dengan bilah tipis. Persentasenya selalu ditulis angkanya, bilah
    hanya membantu membandingkan sekilas. */
 function Angka({ nilai, satuan, judul, keterangan, persen, persenLabel, kaki }) {
+  const t = useTeks()
   return (
     <Card className="px-6 py-7">
-      <p className="text-[15px] font-semibold text-ink-2">{judul}</p>
+      <p className="text-[15px] font-semibold text-ink-2">{t(judul)}</p>
       <p className="mt-2 flex items-baseline gap-2">
         <span className="text-[46px] font-extrabold leading-none tracking-tight text-ink tabular-nums">
           {nilai}
         </span>
-        {satuan ? <span className="text-[18px] font-semibold text-ink-2">{satuan}</span> : null}
+        {satuan ? <span className="text-[18px] font-semibold text-ink-2">{t(satuan)}</span> : null}
       </p>
 
       {typeof persen === 'number' ? (
         <div className="mt-4">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-[14px] text-ink-2">{persenLabel}</span>
+            <span className="text-[14px] text-ink-2">{t(persenLabel)}</span>
             <span className="text-[18px] font-extrabold tabular-nums text-ink">{persen}%</span>
           </div>
           <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[var(--grid)]">
@@ -66,7 +69,7 @@ function Angka({ nilai, satuan, judul, keterangan, persen, persenLabel, kaki }) 
       {/* Bersyarat: tanpa ini, kartu yang keterangannya kosong tetap menyisakan
           satu baris kosong beserta jaraknya. */}
       {keterangan ? (
-        <p className="mt-3 text-[14.5px] leading-relaxed text-ink-2">{keterangan}</p>
+        <p className="mt-3 text-[14.5px] leading-relaxed text-ink-2">{t(keterangan)}</p>
       ) : null}
 
       {/* Kaki kartu — tempat tombol lipat, mengikuti pola kartu "Nilai akhir"
@@ -79,6 +82,7 @@ function Angka({ nilai, satuan, judul, keterangan, persen, persenLabel, kaki }) 
 /* Baris kaki di dalam kartu: ringkasan di kiri, tombol lipat di kanan. Hanya
    muncul di ponsel; di layar lebar seluruh kartu memang sudah terlihat. */
 function KakiLipat({ buka, onToggle, idIsi, ringkas }) {
+  const t = useTeks()
   return (
     <button
       type="button"
@@ -89,7 +93,7 @@ function KakiLipat({ buka, onToggle, idIsi, ringkas }) {
     >
       <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink-2">{ringkas}</span>
       <span className="shrink-0 text-[13.5px] font-bold text-brand-ink">
-        {buka ? 'Tutup' : 'Rincian'}
+        {t(buka ? 'Tutup' : 'Rincian')}
       </span>
       <IconChevronDown
         size={17}
@@ -101,6 +105,7 @@ function KakiLipat({ buka, onToggle, idIsi, ringkas }) {
 
 /* Tautan ke halaman lain — judul besar, satu kalimat, dan "Lihat selengkapnya". */
 function Pintu({ ke, judul, keterangan, icon: Icon, sembunyi = false }) {
+  const t = useTeks()
   return (
     /* Kelas sembunyi dipasang pada <li>-nya sendiri, bukan pada pembungkus
        tambahan: <li> di dalam <li> bukan markup yang sah. */
@@ -112,10 +117,10 @@ function Pintu({ ke, judul, keterangan, icon: Icon, sembunyi = false }) {
         <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-soft text-brand-ink">
           <Icon size={24} />
         </span>
-        <span className="mt-4 text-[17px] font-bold text-ink">{judul}</span>
-        <span className="mt-1.5 text-[14.5px] leading-relaxed text-ink-2">{keterangan}</span>
+        <span className="mt-4 text-[17px] font-bold text-ink">{t(judul)}</span>
+        <span className="mt-1.5 text-[14.5px] leading-relaxed text-ink-2">{t(keterangan)}</span>
         <span className="mt-4 inline-flex items-center gap-1.5 text-[15px] font-bold text-brand-ink underline underline-offset-4">
-          Lihat selengkapnya
+          {t('Lihat selengkapnya')}
           <IconChevronRight size={17} />
         </span>
       </Link>
@@ -124,6 +129,7 @@ function Pintu({ ke, judul, keterangan, icon: Icon, sembunyi = false }) {
 }
 
 export default function Overview() {
+  const teks = useTeks()
   // Ikut menghitung ulang begitu ada nilai yang masuk dari panel Kemahasiswaan.
   useStore()
   const { admin } = useAuth()
@@ -170,7 +176,11 @@ export default function Overview() {
               buka={bukaAngka}
               onToggle={() => setBukaAngka((v) => !v)}
               idIsi="angka-lain"
-              ringkas={'rata-rata ' + (angka.rata ?? '—') + ' · ' + angka.final.toLocaleString('id-ID') + ' final'}
+              ringkas={
+                teks('rata-rata {n}', { n: angka.rata ?? '-' }) +
+                ' · ' +
+                teks('{n} final', { n: angka.final.toLocaleString('id-ID') })
+              }
             />
           }
         />
@@ -186,13 +196,13 @@ export default function Overview() {
           nilai={angka.rata ?? '—'}
           satuan="dari 100"
           persen={bagi(angka.diAtasAmbang)}
-          persenLabel={'Di atas batas ' + CONFIG.AMBANG_SERTIFIKAT}
+          persenLabel={teks('Di atas batas {ambang}', { ambang: CONFIG.AMBANG_SERTIFIKAT })}
           // keterangan={'Batas kelulusan pembinaan adalah ' + CONFIG.AMBANG_SERTIFIKAT + '.'}
         />
         <Angka
           judul="Nilai sudah final"
           nilai={angka.final.toLocaleString('id-ID')}
-          satuan={'dari ' + angka.total.toLocaleString('id-ID')}
+          satuan={teks('dari {n}', { n: angka.total.toLocaleString('id-ID') })}
           persen={bagi(angka.final)}
           persenLabel="Sudah dikunci"
           // keterangan="Mahasiswa yang seluruh sepuluh aspeknya sudah dinilai dan dikunci."
@@ -207,13 +217,22 @@ export default function Overview() {
 
       {/* ------------------------------ halaman lain ----------------------------- */}
       <section>
-        <h2 className="mb-3 text-[25px] font-extrabold tracking-tight text-ink">More Pages</h2>
+        <h2 className="mb-3 text-[25px] font-extrabold tracking-tight text-ink">
+          {teks('Halaman lain')}
+        </h2>
         <ul id="halaman-lain" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           <Pintu
             ke="/admin/nilai"
             icon={IconUpload}
             judul="Input &amp; Import Nilai"
             keterangan="Masukkan nilai satu per satu, atau unggah rekap dari Excel."
+          />
+          <Pintu
+            sembunyi={!bukaHalaman}
+            ke="/admin/usulan"
+            icon={IconCheckShield}
+            judul="Persetujuan Nilai Dosen"
+            keterangan="Setujui atau tolak nilai yang dikirim dosen pengampu."
           />
           <Pintu
             sembunyi={!bukaHalaman}
@@ -260,7 +279,7 @@ export default function Overview() {
               aria-controls="halaman-lain"
               className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line px-6 py-4 text-[14px] font-bold text-brand-ink transition hover:border-brand-ink"
             >
-              {bukaHalaman ? 'Sembunyikan' : 'Tampilkan 5 halaman lainnya'}
+              {teks(bukaHalaman ? 'Sembunyikan' : 'Tampilkan 6 halaman lainnya')}
               <IconChevronDown
                 size={17}
                 className={'transition-transform ' + (bukaHalaman ? 'rotate-180' : '')}

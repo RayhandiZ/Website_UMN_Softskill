@@ -5,13 +5,15 @@ import {
   IconBuilding,
   IconCertificate,
   IconDocument,
+  IconCheckShield,
   IconGauge,
   IconList,
   IconUpload,
   IconUsers,
 } from '../../components/Icons'
 import { PENGAJUAN_KOREKSI, PERIODE_AKTIF, labelPeriode } from '../../lib/mockData'
-import { useStore } from '../../lib/store'
+import { useStore, usulanMenunggu } from '../../lib/store'
+import { useTeks } from '../../lib/bahasa'
 import { kunciSesi, useProfil } from '../../lib/profil'
 import LoncengKemahasiswaan from './LoncengKemahasiswaan'
 import StatusData from './StatusData'
@@ -39,13 +41,14 @@ const NAV = [
    tidak menambah keramaian layar. Yang dulu diminta dihapus adalah menu samping
    yang SELALU terlihat berdampingan dengan kartu-kartu itu.
    -------------------------------------------------------------------------- */
-const KELOMPOK_LACI = (koreksi) => [
+const KELOMPOK_LACI = (koreksi, usulan) => [
   {
     judul: 'Workspace',
     item: [
       { to: '/admin', label: 'Overview', icon: IconGauge, end: true },
       { to: '/admin/mahasiswa', label: 'Data Mahasiswa', icon: IconUsers },
       { to: '/admin/nilai', label: 'Input & Import Nilai', icon: IconUpload, lencana: koreksi || null },
+      { to: '/admin/usulan', label: 'Persetujuan Nilai Dosen', icon: IconCheckShield, lencana: usulan || null },
       { to: '/admin/angkatan', label: 'Angkatan & Sertifikat', icon: IconCertificate },
     ],
   },
@@ -63,6 +66,7 @@ const KELOMPOK_LACI = (koreksi) => [
 export default function AdminLayout({ children }) {
   // Ikut menghitung ulang begitu ada nilai yang masuk dari panel Kemahasiswaan.
   useStore()
+  const t = useTeks()
   const { user } = useAuth()
   const { foto } = useProfil(kunciSesi(user))
 
@@ -83,7 +87,10 @@ export default function AdminLayout({ children }) {
     <div className="flex min-h-screen flex-col">
       <Navbar
         links={NAV}
-        kelompok={KELOMPOK_LACI(PENGAJUAN_KOREKSI.filter((k) => k.status === 'menunggu').length)}
+        kelompok={KELOMPOK_LACI(
+          PENGAJUAN_KOREKSI.filter((k) => k.status === 'menunggu').length,
+          usulanMenunggu().length,
+        )}
         aksi={<LoncengKemahasiswaan />}
         foto={foto}
       />
@@ -94,7 +101,8 @@ export default function AdminLayout({ children }) {
             ini, jadi tempatnya memang di layout, bukan di tiap halaman. */}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <p className="text-[13.5px] text-ink-2">
-            Universitas Multimedia Nusantara · Periode {labelPeriode(PERIODE_AKTIF)}
+            Universitas Multimedia Nusantara ·{' '}
+            {t('Periode {periode}', { periode: labelPeriode(PERIODE_AKTIF) })}
           </p>
           <StatusData />
         </div>

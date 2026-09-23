@@ -178,6 +178,84 @@ body {
   }
 }
 
+/* --------------------------------------------------------------------------
+   Pil kaca yang meluncur di dalam pemilih bahasa.
+
+   Ini PENDEKATAN kaca cair ala Apple, bukan bahan resminya: Apple hanya
+   mendokumentasikan Liquid Glass untuk platformnya sendiri dan tidak pernah
+   merilis CSS-nya. Yang bisa ditiru di web adalah bahan pembentuk kesannya:
+   blur di belakang, saturasi yang dinaikkan supaya warna di baliknya terangkat,
+   satu gradien tipis sebagai pantulan cahaya, garis terang di tepi atas, dan
+   bayangan pendek supaya pilnya terbaca mengambang di atas jalurnya.
+
+   Dipisahkan dari .kaca karena tugasnya lain: .kaca membuat PANEL besar,
+   sedangkan ini benda kecil yang bergerak dan harus tetap punya kontras tinggi
+   terhadap tulisan di atasnya.
+   -------------------------------------------------------------------------- */
+.pil-kaca {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.35)),
+    color-mix(in srgb, var(--brand-soft) 85%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(190%);
+  backdrop-filter: blur(14px) saturate(190%);
+  border: 1px solid rgb(255 255 255 / 0.72);
+  box-shadow:
+    0 6px 14px -6px rgba(16, 20, 50, 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.92),
+    inset 0 -1px 0 rgb(255 255 255 / 0.3);
+}
+
+.dark .pil-kaca {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0.03)),
+    color-mix(in srgb, var(--brand-soft) 88%, transparent);
+  border-color: rgb(255 255 255 / 0.16);
+  box-shadow:
+    0 6px 16px -6px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgb(255 255 255 / 0.2);
+}
+
+/* Varian di atas bilah biru: pilnya putih beku, karena tulisan di atasnya
+   berwarna biru tua dan butuh latar terang untuk tetap terbaca. */
+.pil-kaca-putih {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.98), rgb(255 255 255 / 0.82)),
+    rgb(255 255 255 / 0.9);
+  -webkit-backdrop-filter: blur(14px) saturate(190%);
+  backdrop-filter: blur(14px) saturate(190%);
+  border: 1px solid rgb(255 255 255 / 0.9);
+  box-shadow:
+    0 6px 14px -6px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.95);
+}
+
+/* Tanpa dukungan backdrop-filter, pilnya diisi penuh supaya tetap terlihat
+   sebagai penanda posisi, bukan kotak samar. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pil-kaca {
+    background: var(--brand-soft);
+  }
+  .pil-kaca-putih {
+    background: #ffffff;
+  }
+}
+
+/* Sebagian pengguna mematikan efek tembus pandang di tingkat sistem. Blur-nya
+   dilepas, warnanya dipadatkan; posisinya tetap terbaca. */
+@media (prefers-reduced-transparency: reduce) {
+  .pil-kaca,
+  .pil-kaca-putih {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .pil-kaca {
+    background: var(--brand-soft);
+  }
+  .pil-kaca-putih {
+    background: #ffffff;
+  }
+}
+
 /* Muncul dengan sedikit pegas: mengembang dari titik tumpu di sudut atas,
    seperti tetesan yang menyebar. Lengkung cubic-bezier melewati 1 sedikit
    supaya ada dorongan kecil di akhir. */
@@ -204,6 +282,104 @@ body {
 @keyframes geser { from { transform: translateX(-100%); } to { transform: none; } }
 
 .animate-pudar { animation: pudar .24s ease both; }
+
+/* --------------------------------------------------------------------------
+   Layanan tambahan yang mengambang di sudut kanan bawah.
+
+   Panelnya memakai .kaca, tetapi latarnya dipadatkan jauh di atas nilai
+   bawaannya: .kaca dirancang untuk panel kecil di atas satu kartu, sedangkan
+   panel ini melayang di atas apa pun yang kebetulan ada di bawahnya — tabel
+   padat, grafik, foto. Pada 10% saja teksnya akan bertabrakan dengan isi
+   halaman di baliknya.
+   -------------------------------------------------------------------------- */
+.layanan-panel {
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(185%);
+  backdrop-filter: blur(20px) saturate(185%);
+  transform-origin: bottom right;
+  animation: layanan-panel 0.36s cubic-bezier(0.22, 1.15, 0.36, 1) both;
+}
+.dark .layanan-panel {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+@keyframes layanan-panel {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Tiap baris menyusul panelnya, bukan muncul bersamanya. */
+.layanan-item {
+  animation: layanan-item 0.34s cubic-bezier(0.22, 0.68, 0.35, 1) both;
+}
+@keyframes layanan-item {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Tombolnya padat, bukan kaca: ia aksi utama dan harus punya kontras penuh
+   terhadap apa pun yang lewat di belakangnya. Sentuhan kacanya ada di garis
+   terang tepi atas dan bayangan yang melembut, bukan pada tembus pandangnya. */
+.layanan-tombol {
+  box-shadow:
+    0 12px 30px -10px rgba(16, 20, 50, 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    inset 0 -1px 0 rgb(0 0 0 / 0.14);
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1.2, 0.36, 1),
+    box-shadow 0.3s ease;
+}
+.layanan-tombol:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 18px 38px -12px rgba(16, 20, 50, 0.6),
+    0 0 0 6px color-mix(in srgb, var(--brand) 14%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.34);
+}
+.layanan-tombol:active {
+  transform: translateY(0) scale(0.94);
+}
+
+/* Tanpa dukungan backdrop-filter, panelnya diisi penuh. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .layanan-panel {
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .layanan-panel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--surface);
+  }
+}
+
+/* Pudar sangat pendek saat bahasa berganti. Sengaja tidak mulai dari nol:
+   teks yang hilang sama sekali lalu muncul lagi terbaca seperti halaman
+   dimuat ulang, sedangkan 55% terbaca sebagai teks yang berganti di tempat. */
+.ganti-bahasa main {
+  animation: ganti-bahasa 0.28s cubic-bezier(0.22, 0.68, 0.35, 1) both;
+}
+@keyframes ganti-bahasa {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @keyframes pudar { from { opacity: 0; } to { opacity: 1; } }
 
 /* --------------------------------------------------------------------------

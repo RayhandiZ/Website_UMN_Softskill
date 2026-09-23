@@ -4,6 +4,7 @@ import FilterBar, { DEFAULT_FILTER } from '../../components/FilterBar'
 import { Badge, Card, CatatanKaki, EmptyState, HurufBadge, ScoreBar, Select } from '../../components/Ui'
 import { IconChevronDown, IconChevronRight, IconDownload, IconRefresh } from '../../components/Icons'
 import { CONFIG } from '../../lib/config'
+import { useTeks } from '../../lib/bahasa'
 import { susunCSV, unduhBerkas } from '../../lib/csv'
 import { kelayakanSertifikat } from '../../lib/rules'
 import { hurufMutu } from '../../lib/scoring'
@@ -25,6 +26,7 @@ const KOLOM = [
 ]
 
 export default function Students() {
+  const t = useTeks()
   // Ikut menghitung ulang begitu ada nilai yang masuk dari panel Kemahasiswaan.
   /* Ikut menghitung ulang setiap ada nilai yang tersimpan — dan setiap data
      disegarkan, karena segarkanData() memakai saluran yang sama. */
@@ -100,16 +102,22 @@ export default function Students() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-extrabold tracking-tight text-ink">Data mahasiswa</h1>
+          <h1 className="text-[22px] font-extrabold tracking-tight text-ink">
+            {t('Data mahasiswa')}
+          </h1>
           <p className="mt-1.5 text-[14px] text-ink-2">
-            {rows.length.toLocaleString('id-ID')} mahasiswa · rata-rata {r.rata ?? '—'} · {r.final} transkrip final
+            {t('{n} mahasiswa', { n: rows.length.toLocaleString('id-ID') })} ·{' '}
+            {t('rata-rata {n}', { n: r.rata ?? '-' })} ·{' '}
+            {t('{n} transkrip final', { n: r.final })}
           </p>
           {/* Penanda waktu hanya muncul setelah benar-benar disegarkan —
               menuliskannya sejak awal akan mengaku melakukan sesuatu yang
               belum terjadi. */}
           {segar ? (
             <p className="mt-1 text-[12.5px] text-ink-3">
-              Terakhir disegarkan {segar.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+              {t('Terakhir disegarkan {jam}', {
+                jam: segar.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+              })}
             </p>
           ) : null}
         </div>
@@ -119,11 +127,11 @@ export default function Students() {
               store yang berubah — tombol ini tidak. */}
           <button type="button" className="btn-ghost" onClick={segarkanData}>
             <IconRefresh size={17} />
-            Segarkan data
+            {t('Segarkan data')}
           </button>
           <button type="button" className="btn-ghost" onClick={eksporCSV} disabled={!urut.length}>
             <IconDownload size={17} />
-            Ekspor CSV
+            {t('Ekspor CSV')}
           </button>
         </div>
       </div>
@@ -132,10 +140,11 @@ export default function Students() {
 
       <div className="max-w-xs">
         <Select
-          label="Kelengkapan nilai"
+          label={t('Kelengkapan nilai')}
           value={kelengkapan}
           onChange={setKelengkapan}
           options={['Semua', 'Lengkap', 'Ada yang kosong']}
+          tampilkan={t}
         />
       </div>
 
@@ -156,7 +165,7 @@ export default function Students() {
                       }
                     >
                       <button type="button" onClick={() => toggle(c.key)} className="inline-flex items-center gap-1 uppercase hover:text-ink">
-                        {c.label}
+                        {t(c.label)}
                         {aktif ? (
                           <IconChevronDown size={13} className={sort.dir === 'asc' ? 'rotate-180 transition' : 'transition'} />
                         ) : null}
@@ -189,7 +198,7 @@ export default function Students() {
                         <ScoreBar value={x.nilai ?? 0} color="var(--c1)" height={7} />
                       </span>
                       <span className="w-7 text-right text-[14px] font-bold tabular-nums text-ink">
-                        {x.nilai ?? '—'}
+                        {x.nilai ?? '-'}
                       </span>
                     </div>
                   </td>
@@ -198,15 +207,21 @@ export default function Students() {
                   </td>
                   <td className="px-4 py-3 text-right text-[13px] tabular-nums text-ink-2">
                     {x.dinilai}/{x.total}
-                    {x.kosong ? <span className="ml-1.5 text-[var(--warning)]">·{x.kosong} kosong</span> : null}
+                    {x.kosong ? (
+                      <span className="ml-1.5 text-[var(--warning)]">
+                        ·{t('{n} kosong', { n: x.kosong })}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge tone={x.layak ? 'good' : 'neutral'}>{x.layak ? 'Berhak' : 'Belum'}</Badge>
+                    <Badge tone={x.layak ? 'good' : 'neutral'}>
+                      {t(x.layak ? 'Berhak' : 'Belum')}
+                    </Badge>
                   </td>
                   <td className="px-2 py-3">
                     <Link
                       href={'/admin/mahasiswa/' + x.s.id}
-                      aria-label={'Buka transkrip ' + x.s.name}
+                      aria-label={t('Buka transkrip {nama}', { nama: x.s.name })}
                       className="grid h-8 w-8 place-items-center rounded-lg text-ink-3 transition hover:bg-surface hover:text-brand-ink"
                     >
                       <IconChevronRight size={16} />
@@ -219,27 +234,27 @@ export default function Students() {
         </div>
 
         {!tampil.length ? (
-          <EmptyState title="Tidak ada mahasiswa yang cocok">
-            Longgarkan filter, ubah kata kunci, atau setel kelengkapan nilai kembali ke “Semua”.
+          <EmptyState title={t('Tidak ada mahasiswa yang cocok')}>
+            {t('Longgarkan filter, ubah kata kunci, atau setel kelengkapan nilai kembali ke “Semua”.')}
           </EmptyState>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
             <p className="text-[13px] text-ink-2">
-              Menampilkan{' '}
+              {t('Menampilkan')}{' '}
               <strong className="tabular-nums text-ink">
                 {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, urut.length)}
               </strong>{' '}
-              dari <strong className="tabular-nums text-ink">{urut.length}</strong>
+              {t('dari')} <strong className="tabular-nums text-ink">{urut.length}</strong>
             </p>
             <div className="flex items-center gap-2">
               <button type="button" className="btn-ghost !px-3 !py-2 text-[13px]" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-                Sebelumnya
+                {t('Sebelumnya')}
               </button>
               <Badge tone="neutral">
                 {page} / {halaman}
               </Badge>
               <button type="button" className="btn-ghost !px-3 !py-2 text-[13px]" disabled={page === halaman} onClick={() => setPage((p) => p + 1)}>
-                Berikutnya
+                {t('Berikutnya')}
               </button>
             </div>
           </div>
@@ -247,8 +262,7 @@ export default function Students() {
       </Card>
 
       <CatatanKaki>
-        Kolom “Aspek dinilai” menghitung aspek yang sudah punya nilai, bukan aspek yang sudah dibuka. Aspek yang
-        semesternya belum tiba tidak pernah ikut dihitung.
+        {t('Kolom “Aspek dinilai” menghitung aspek yang sudah punya nilai, bukan aspek yang sudah dibuka. Aspek yang semesternya belum tiba tidak pernah ikut dihitung.')}
       </CatatanKaki>
     </div>
   )

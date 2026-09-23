@@ -11,7 +11,9 @@ global.ResizeObserver = w.ResizeObserver || class { observe(){} unobserve(){} di
 w.ResizeObserver = global.ResizeObserver
 
 const SESI = { student: JSON.stringify({ role:'student', email:'a@student.umn.ac.id', name:'X', initials:'RZ' }),
-               admin:   JSON.stringify({ role:'admin',   email:'a@umn.ac.id', name:'Y', initials:'KH' }) }
+               admin:   JSON.stringify({ role:'admin',   email:'a@umn.ac.id', name:'Y', initials:'KH' }),
+               dosen:   JSON.stringify({ role:'dosen',   email:'suryasari@lecturer.umn.ac.id', name:'Suryasari, S.Kom., M.MSI.',
+                                         initials:'SU', nip:'0312078801', sumber:'MK', semester:1, prodi:'Sistem Informasi' }) }
 
 const ISI = {
   '/mahasiswa': [
@@ -28,7 +30,7 @@ const ISI = {
     /* Ditambatkan ke elemen <footer>, bukan ke judul bagiannya: judulnya teks
        yang bebas diganti ("Pintasan" pernah menjadi "Short Cuts"), sedangkan
        keberadaan pintasannya sendiri yang ingin dijaga. */
-    [/<footer[\s\S]*?Road Map[\s\S]{0,900}History/, 'footer punya pintasan berikon', true, true],
+    [/<footer[\s\S]*?Peta Perjalanan[\s\S]{0,900}Riwayat/, 'footer punya pintasan berikon', true, true],
     [/Helpdesk[\s\S]{0,300}softskill@umn\.ac\.id/, 'helpdesk dan kontak tercantum'],
     [/Akses Cepat/, 'tidak ada lagi blok tombol mati', false],
     /* Aksesoris rujukan yang sengaja tidak dibawa. */
@@ -100,6 +102,42 @@ const ISI = {
     [/Semester wajib dipilih sebelum data bisa dimasukkan/, 'dropdown semester ditandai wajib'],
     [/Semester 1 .*3 aspek/, 'tiap pilihan semester menyebut jumlah aspeknya'],
   ],
+
+  '/dosen': [
+    [/Pengumpulan masuk/, 'judul halaman pengumpulan'],
+    [/Menunggu dinilai/, 'angka utama: yang belum dinilai'],
+    [/Nilai tidak pernah datang dari mahasiswa/, 'R8 dinyatakan di halaman dosen'],
+    [/MK Humaniora Semester 1, Sistem Informasi/, 'kelas yang dipegang disebut di kerangka'],
+    [/Tugas yang dikumpulkan/, 'kolom tugas ada di tabel'],
+    [/Belum dinilai/, 'status pengumpulan berlabel, bukan warna saja'],
+    [/tidak langsung masuk transkrip/, 'dijelaskan bahwa nilainya perlu disetujui'],
+    [/aria-label="Nilai untuk /, 'tidak ada kolom nilai di daftar pengumpulan', false, true],
+  ],
+
+  '/dosen/nilai': [
+    [/Pilih tugas yang dinilai/, 'langkah pertama: memilih tugas'],
+    [/Isi nilainya/, 'langkah kedua: mengisi nilai'],
+    [/Manual/, 'ada cara manual'],
+    [/Otomatis/, 'ada cara otomatis'],
+    [/Kirim untuk disetujui/, 'tombolnya berbunyi kirim, bukan simpan'],
+    [/Simpan nilai/, 'tidak ada tombol simpan langsung', false],
+    [/belum terlihat oleh mahasiswa/, 'akibat pengiriman dijelaskan'],
+    [/aria-label="Nilai untuk /, 'tiap kotak nilai punya label untuk pembaca layar', true, true],
+  ],
+
+  '/dosen/usulan': [
+    [/Status usulan/, 'judul halaman status'],
+    [/Menunggu keputusan/, 'angka utama: yang menunggu diputuskan'],
+  ],
+
+  '/admin/usulan': [
+    [/Persetujuan nilai dosen/, 'judul halaman persetujuan'],
+    [/Usulan menunggu keputusan/, 'angka utama: usulan yang tertahan'],
+    [/Rahmat Nugroho/, 'usulan dosen pertama tampil'],
+    [/Maria Ulfah/, 'usulan dosen kedua tampil'],
+    [/Tidak satu pun sudah masuk transkrip/, 'ditegaskan nilainya masih tertahan'],
+    [/Sudah diputuskan/, 'ada tab riwayat keputusan'],
+  ],
 }
 
 const RUTE = [
@@ -115,12 +153,17 @@ const RUTE = [
   ['admin', '/admin/program-studi', 'Program studi'],
   ['admin', '/admin/nilai', 'Input nilai'],
   ['admin', '/admin/profil', 'Profil admin'],
+  ['admin', '/admin/usulan', 'Persetujuan nilai dosen'],
+  ['dosen', '/dosen', 'Pengumpulan masuk'],
+  ['dosen', '/dosen/nilai', 'Input nilai dosen'],
+  ['dosen', '/dosen/usulan', 'Status usulan dosen'],
+  ['dosen', '/dosen/profil', 'Profil dosen'],
 ]
 
 ;(async () => {
   const bundle = require('./bundle.cjs')
   const mod = require(bundle('smoke.jsx', '.smoke.cjs', { platform: 'browser', format: 'cjs', loader: { '.jsx': 'jsx' }, jsx: 'automatic' }))
-  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, perAngkatan, BATAS_BARIS_ASPEK } = mod
+  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, ujiAlurDosen, ujiBahasa, ujiSeretBahasa, ujiLayanan, ujiPanelLain, perAngkatan, BATAS_BARIS_ASPEK } = mod
   let gagal = 0
   for (const [peran, rute, nama] of RUTE) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
@@ -201,7 +244,7 @@ const RUTE = [
 
   /* ------------------------------ menu di ponsel --------------------------- */
   console.log('')
-  for (const [peran, rute, harapTautan] of [['student', '/mahasiswa', 6], ['admin', '/admin', 8]]) {
+  for (const [peran, rute, harapTautan] of [['student', '/mahasiswa', 6], ['admin', '/admin', 9], ['dosen', '/dosen', 4]]) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
     const h = await ujiMenuHp(rute)
 
@@ -558,7 +601,7 @@ const RUTE = [
     ['angka: kakinya hanya ada di ponsel', hlo.angka.kakiKhususPonsel],
     ['halaman: ada tombol berbentuk kartu', hlo.halaman.adaTombol],
     ['halaman: tombolnya hanya ada di ponsel', hlo.halaman.tombolKhususPonsel],
-    ['halaman: lima kartu terlipat saat dibuka', hlo.halaman.limaTerlipatAwal],
+    ['halaman: enam kartu terlipat saat dibuka', hlo.halaman.terlipatAwal],
     ['halaman: semuanya tampil setelah ditekan', hlo.halaman.tidakAdaYangTersembunyiSesudah],
     ['halaman: tetap utuh di layar lebar', hlo.halaman.tetapUtuhDiLayarLebar],
   ]
@@ -566,6 +609,126 @@ const RUTE = [
   gagal += rusakLipat.length
   console.log((rusakLipat.length ? 'GAGAL  ' : 'OK     ') + 'Ringkasan admin di ponsel')
   for (const [ket, ok] of cekLipat) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ------------------------- Pemilih bahasa ID / EN ------------------------ */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.student)
+  const bh = await ujiBahasa()
+  const cekBahasa = [
+    ['pemilih ID / EN ada di bilah atas', bh.adaPemilih],
+    ['render pertama selalu Indonesia', bh.mulaiIndonesia],
+    ['isinya memang Indonesia', bh.isiIndonesia],
+    ['menekan EN mengaktifkan Inggris', bh.inggrisAktif],
+    ['isi halaman ikut berganti', bh.isiInggris],
+    ['judul kartu ikut berganti', bh.judulIkutBerganti],
+    ['menu navigasi ikut berganti', bh.menuIkutBerganti],
+    ['pilihannya tersimpan', bh.tersimpan],
+    ['atribut lang ikut diperbarui', bh.langDiperbarui],
+    ['penanda {n} terisi, tidak tampil mentah', bh.penandaTerisi],
+    ['bisa kembali ke Indonesia', bh.kembaliIndonesia],
+  ]
+  const rusakBahasa = cekBahasa.filter(([, ok]) => !ok)
+  gagal += rusakBahasa.length
+  console.log((rusakBahasa.length ? 'GAGAL  ' : 'OK     ') + 'Pemilih bahasa')
+  for (const [ket, ok] of cekBahasa) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ------------- Bahasa & bantuan di panel admin dan dosen ---------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  const pa = await ujiPanelLain('/admin')
+  w.localStorage.setItem('sk5c.session', SESI.dosen)
+  const pd = await ujiPanelLain('/dosen')
+  const cekPanel = [
+    ['pemilih bahasa ada di panel Kemahasiswaan', pa.adaPemilihBahasa],
+    ['isi panel Kemahasiswaan ikut berganti', pa.isiIkutBerganti],
+    ['pemilih bahasa ada di panel dosen', pd.adaPemilihBahasa],
+    ['isi panel dosen ikut berganti', pd.isiIkutBerganti],
+    ['tombol bantuan ADA di panel dosen', pd.adaTombolBantuan],
+    ['tombol bantuan TIDAK ada di panel Kemahasiswaan', !pa.adaTombolBantuan],
+  ]
+  const rusakPanel = cekPanel.filter(([, ok]) => !ok)
+  gagal += rusakPanel.length
+  console.log((rusakPanel.length ? 'GAGAL  ' : 'OK     ') + 'Bahasa & bantuan lintas panel')
+  for (const [ket, ok] of cekPanel) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ---------------------- Layanan tambahan mengambang ---------------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.student)
+  const ly = await ujiLayanan()
+  const lyLain = await ujiLayanan('/mahasiswa/transkrip')
+  const cekLayanan = [
+    ['tombol bantuan ada di panel mahasiswa', ly.adaTombol],
+    ['ada juga di halaman lain, bukan cuma dashboard', lyLain.adaTombol],
+    ['benar-benar mengambang, bukan ikut tergulir', ly.mengambang],
+    ['tidak ikut tercetak bersama transkrip', ly.takIkutTercetak],
+    ['lapisannya di bawah laci navigasi', ly.diBawahLaci],
+    ['panel tertutup sebelum ditekan', ly.tertutupAwal],
+    ['tombolnya menyebut keadaannya', ly.menyebutKeadaan],
+    ['panel terbuka setelah ditekan', ly.terbuka],
+    ['keadaan tombol ikut berubah', ly.keadaanIkutBerubah],
+    ['berisi tiga saluran', ly.tigaSaluran],
+    ['ada tautan WhatsApp', ly.adaWhatsapp],
+    ['ada tautan telepon', ly.adaTelepon],
+    ['ada tautan surel', ly.adaSurel],
+    ['nomor tel: tanpa spasi', ly.telSah],
+    ['tautan keluar memakai rel noopener', ly.tautanKeluarAman],
+    ['jam layanan dicantumkan', ly.adaJamLayanan],
+    ['panelnya memakai bahan kaca', ly.berkaca],
+    ['barisnya muncul berurutan', ly.berurutanMasuk],
+    ['Escape menutup panelnya', ly.escMenutup],
+  ]
+  const rusakLayanan = cekLayanan.filter(([, ok]) => !ok)
+  gagal += rusakLayanan.length
+  console.log((rusakLayanan.length ? 'GAGAL  ' : 'OK     ') + 'Layanan tambahan mengambang')
+  for (const [ket, ok] of cekLayanan) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ------------------------ Seret pil pemilih bahasa ----------------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.student)
+  const sb = await ujiSeretBahasa()
+  const cekSeret = [
+    ['ada pil penanda yang bergerak', sb.adaPil],
+    ['pilnya memakai bahan kaca', sb.pilBerkaca],
+    ['mulai menempel di segmen kiri', sb.mulaiDiKiri],
+    ['KLIK BIASA mengganti bahasa', sb.klikBiasaMengganti],
+    ['klik susulan tidak menghitungnya dua kali', sb.klikSusulanDiabaikan],
+    ['klik biasa bisa kembali ke segmen kiri', sb.klikBiasaBisaKembali],
+    ['pil mengikuti jari saat diseret', sb.pilIkutJari],
+    ['transisi dimatikan selama diseret', sb.transisiMatiSaatDiseret],
+    ['seret lalu dilepas di kanan: bahasa berganti', sb.seretMengganti],
+    ['transisi pulih setelah dilepas', sb.transisiPulih],
+    ['klik susulan sesudah seret tidak membalikkannya', sb.seretTakDibalikSentuhan],
+    ['seret pendek kembali ke tempat semula', sb.seretPendekKembali],
+    ['papan ketik tetap dilayani', sb.papanKetikJalan],
+  ]
+  const rusakSeret = cekSeret.filter(([, ok]) => !ok)
+  gagal += rusakSeret.length
+  console.log((rusakSeret.length ? 'GAGAL  ' : 'OK     ') + 'Pemilih bahasa: klik, seret, papan ketik')
+  for (const [ket, ok] of cekSeret) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ---------------- Alur dosen: usul, setujui, tolak, tahan ---------------- */
+  console.log('')
+  const ad = await ujiAlurDosen()
+  const cekDosen = [
+    ['ada pengumpulan yang bisa dinilai', ad.adaAntrean],
+    ['usulan tercatat sebagai menunggu', ad.usulanTercatat],
+    ['nilainya BELUM masuk transkrip', ad.belumMasukTranskrip],
+    ['status pengumpulan jadi menunggu', ad.statusJadiMenunggu],
+    ['masuk antrean persetujuan admin', ad.masukAntreanAdmin],
+    ['admin bisa menyetujui', ad.disetujui],
+    ['barulah nilainya masuk transkrip', ad.masukTranskrip],
+    ['status pengumpulan jadi tercatat', ad.statusJadiDinilai],
+    ['tercatat sebagai batch yang bisa dibatalkan', ad.punyaBatch],
+    ['tidak bisa diputuskan dua kali', ad.tidakBisaDiputusDuaKali],
+    ['penolakan tidak menulis nilai apa pun', ad.tolakTidakMenulis],
+    ['status pengumpulan jadi ditolak', ad.statusJadiDitolak],
+    ['sistem menahan usulan yang melanggar', ad.sistemMenahan],
+    ['usulan yang ditahan tetap menunggu', ad.tetapMenunggu],
+  ]
+  const rusakDosen = cekDosen.filter(([, ok]) => !ok)
+  gagal += rusakDosen.length
+  console.log((rusakDosen.length ? 'GAGAL  ' : 'OK     ') + 'Alur nilai dosen -> persetujuan')
+  for (const [ket, ok] of cekDosen) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
 
   console.log(gagal ? '\n' + gagal + ' rute bermasalah' : '\nSeluruh rute merender tanpa galat')
   process.exit(0)

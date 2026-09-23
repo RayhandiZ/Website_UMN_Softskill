@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { contohEmailMahasiswa, getStudentByEmail } from './mockData.js'
+import { contohEmailDosen, contohEmailMahasiswa, getDosenByEmail, getStudentByEmail } from './mockData.js'
 
 /* Autentikasi tiruan untuk tahap UI/UX — peran ditentukan dari domain email.
    Nanti tinggal diganti pemanggilan API tanpa mengubah komponen halaman. */
@@ -12,15 +12,45 @@ const STORAGE_KEY = 'sk5c.session'
 const ADMIN_PROFILE = {
   name: 'Biro Kemahasiswaan & Humaniora',
   unit: 'Student Development & Humanities',
-  email: 'kemahasiswaan@umn.ac.id',
+  email: 'admin@umn.ac.id',
   officer: 'Andini Prameswari, M.Psi.',
 }
 
 const AuthContext = createContext(null)
 
+/* Domain menentukan peran — konvensi UMN yang sebenarnya: mahasiswa memakai
+   @student.umn.ac.id, dosen @lecturer.umn.ac.id, dan alamat @umn.ac.id biasa
+   dipegang unit kerja, termasuk Biro Kemahasiswaan.
+
+   Ditulis sebagai daftar, bukan rantai ternary: menambah peran keempat nanti
+   cukup menambah satu baris, dan tiap pasangan domain-peran tetap terbaca
+   sebagai satu kesatuan. */
+const DOMAIN = [
+  [/@student\.umn\.ac\.id$/i, 'student'],
+  [/@lecturer\.umn\.ac\.id$/i, 'dosen'],
+]
+
 export function roleFromEmail(email) {
-  return /@student\.umn\.ac\.id$/i.test(email.trim()) ? 'student' : 'admin'
+  const alamat = String(email ?? '').trim()
+  for (const [pola, peran] of DOMAIN) if (pola.test(alamat)) return peran
+  return 'admin'
 }
+
+/* --------------------------------------------------------------------------
+   Tempat mendarat tiap peran.
+
+   Dulu ini ditulis `role === 'admin' ? '/admin' : '/mahasiswa'` di tujuh tempat
+   berbeda. Percabangan biner seperti itu tidak pernah salah selama perannya
+   memang dua — dan diam-diam salah pada hari peran ketiga lahir: dosen akan
+   dilempar ke panel mahasiswa tanpa satu pun galat muncul. Sekarang hanya ada
+   SATU tempat yang tahu jawabannya.
+   -------------------------------------------------------------------------- */
+const PANEL = { admin: '/admin', dosen: '/dosen', student: '/mahasiswa' }
+
+export const panelUntuk = (role) => PANEL[role] ?? '/masuk'
+
+/** Sebutan peran yang dibaca manusia — dipakai menu akun dan halaman masuk. */
+export const LABEL_PERAN = { admin: 'Kemahasiswaan', dosen: 'Dosen', student: 'Mahasiswa' }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -71,6 +101,35 @@ export function AuthProvider({ children }) {
         name: ADMIN_PROFILE.name,
         initials: 'KH',
         subtitle: ADMIN_PROFILE.unit,
+      }
+      setUser(next)
+      return next
+    }
+
+    /* Dosen dikenali dari daftar pengampu. Sama seperti mahasiswa, alamat yang
+       tidak terdaftar ditolak — bukan dibuatkan akun kosong di tempat. */
+    if (role === 'dosen') {
+      const dosen = getDosenByEmail(email)
+      if (!dosen) {
+        throw new Error(
+          'Email ' + email.trim() + ' tidak terdaftar sebagai dosen pengampu. Contoh yang terdaftar: ' +
+            contohEmailDosen(2).join(', ') + '.',
+        )
+      }
+      const next = {
+        role,
+        nip: dosen.nip,
+        email: dosen.email,
+        name: dosen.nama,
+        initials: dosen.inisial,
+        subtitle: dosen.jabatan,
+        /* Kewenangan menilai: satu unit asesmen pada satu semester. Dipakai
+           halaman dosen untuk menyaring pengumpulan yang memang menjadi
+           tanggung jawabnya — bukan sekadar hiasan di kartu profil. */
+        sumber: dosen.sumber,
+        semester: dosen.semester,
+        prodi: dosen.prodi,
+        fakultas: dosen.fakultas,
       }
       setUser(next)
       return next
@@ -135,9 +194,7 @@ export function RequireRole({ role, children }) {
     : !user
       ? '/masuk'
       : user.role !== role
-        ? user.role === 'admin'
-          ? '/admin'
-          : '/mahasiswa'
+        ? panelUntuk(user.role)
         : null
 
   useEffect(() => {

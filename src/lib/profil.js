@@ -89,12 +89,20 @@ function subscribe(fn) {
 const bacaVersi = () => versi
 
 /**
- * Kunci akun. Mahasiswa dibedakan oleh NIM, bukan email, karena email bisa
- * berubah sedangkan NIM tidak. Peran Kemahasiswaan hanya satu, jadi cukup
- * ditandai perannya.
+ * Kunci akun. Mahasiswa dibedakan oleh NIM dan dosen oleh NIP — bukan email,
+ * karena email bisa berubah sedangkan nomor induk tidak. Peran Kemahasiswaan
+ * hanya satu, jadi cukup ditandai perannya.
+ *
+ * Dosen WAJIB punya kunci sendiri. Sebelum peran ini ada, semua yang bukan
+ * mahasiswa jatuh ke 'unit:kemahasiswaan' — dan kalau dibiarkan, seluruh dosen
+ * akan berbagi satu profil: foto dan nomor telepon dosen A muncul di akun
+ * dosen B.
  */
-export const kunciAkun = (user) =>
-  user?.role === 'student' ? 'nim:' + (user.nim ?? user.studentId ?? '?') : 'unit:kemahasiswaan'
+export const kunciAkun = (user) => {
+  if (user?.role === 'student') return 'nim:' + (user.nim ?? user.studentId ?? '?')
+  if (user?.role === 'dosen') return 'nip:' + (user.nip ?? '?')
+  return 'unit:kemahasiswaan'
+}
 
 /**
  * Kunci akun untuk sesi yang sedang berjalan.

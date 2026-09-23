@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { IconDocument } from '../Icons'
 import { Pill } from '../Ui'
+import { useTeks } from '../../lib/bahasa'
 
 /* Bingkai bersama untuk setiap grafik: judul, legenda, dan tampilan tabel.
    Tabel wajib ada supaya angka tetap terbaca tanpa mengandalkan warna. */
@@ -14,14 +15,15 @@ export default function ChartFrame({
   action,
   children,
 }) {
+  const t = useTeks()
   const [showTable, setShowTable] = useState(false)
 
   return (
     <section className="card overflow-hidden">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
         <div>
-          <h2 className="text-[15px] font-bold leading-tight text-ink">{title}</h2>
-          {subtitle ? <p className="mt-1 text-[13px] leading-snug text-ink-2">{subtitle}</p> : null}
+          <h2 className="text-[15px] font-bold leading-tight text-ink">{t(title)}</h2>
+          {subtitle ? <p className="mt-1 text-[13px] leading-snug text-ink-2">{t(subtitle)}</p> : null}
         </div>
         <div className="flex items-center gap-2">
           {action}
@@ -38,7 +40,7 @@ export default function ChartFrame({
               }
             >
               <IconDocument size={14} />
-              Tabel
+              {t('Tabel')}
             </button>
           ) : null}
         </div>
@@ -48,7 +50,7 @@ export default function ChartFrame({
         <div className="flex flex-wrap gap-x-5 gap-y-2 border-b border-line px-5 py-3 sm:px-6">
           {legend.map((l) => (
             <Pill key={l.label} color={l.color}>
-              {l.label}
+              {t(l.label)}
             </Pill>
           ))}
         </div>
@@ -67,7 +69,7 @@ export default function ChartFrame({
                       (i === 0 ? '' : 'text-right')
                     }
                   >
-                    {h}
+                    {t(h)}
                   </th>
                 ))}
               </tr>
@@ -85,7 +87,7 @@ export default function ChartFrame({
                           : 'text-right tabular-nums text-ink-2')
                       }
                     >
-                      {cell}
+                      {typeof cell === 'string' ? t(cell) : cell}
                     </td>
                   ))}
                 </tr>

@@ -17,6 +17,7 @@ import { kelayakanSertifikat } from '../../lib/rules'
 import { PERIODE_AKTIF, labelPeriode, transkripOf } from '../../lib/mockData'
 import { useStudent } from './StudentLayout'
 import { useStore } from '../../lib/store'
+import { useTeks } from '../../lib/bahasa'
 
 /* --------------------------------------------------------------------------
    Dashboard mahasiswa.
@@ -52,10 +53,11 @@ const NADA_IKON = {
 /* --------------------------------- ubin ----------------------------------- */
 
 function Ubin({ ikon: Ikon, nada = 'brand', judul, ke, children }) {
+  const t = useTeks()
   const isi = (
     <>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[14px] font-semibold text-ink-2">{judul}</p>
+        <p className="text-[14px] font-semibold text-ink-2">{t(judul)}</p>
         <span className={'grid h-10 w-10 shrink-0 place-items-center rounded-2xl ' + NADA_IKON[nada]}>
           <Ikon size={20} />
         </span>
@@ -76,30 +78,31 @@ function Ubin({ ikon: Ikon, nada = 'brand', judul, ke, children }) {
 /* ------------------------------ status aspek ------------------------------ */
 
 function StatusAspek({ a }) {
+  const t = useTeks()
   if (a.status === 'final') {
     return (
       <Badge tone="good" icon={IconCheck}>
-        Final
+        {t('Final')}
       </Badge>
     )
   }
   if (a.status === 'terkunci') {
     return (
       <Badge tone="neutral" icon={IconLock}>
-        Semester {a.aspek.semester}
+        {t('Semester {n}', { n: a.aspek.semester })}
       </Badge>
     )
   }
   if (a.status === 'menunggu') {
     return (
       <Badge tone="neutral" icon={IconClock}>
-        Belum dinilai
+        {t('Belum dinilai')}
       </Badge>
     )
   }
   return (
     <Badge tone="warning" icon={IconClock}>
-      Sementara
+      {t('Sementara')}
     </Badge>
   )
 }
@@ -119,6 +122,7 @@ const TAB = [
 /* Satu baris aspek. Diketuk untuk membuka rincian komponennya — sumber nilai
    dan komponen mana yang belum masuk — tanpa harus pindah ke transkrip. */
 function BarisAspek({ a, terbuka, onToggle }) {
+  const t = useTeks()
   const area = getArea(a.aspek.area)
   const idRinci = 'rinci-' + a.aspekId
 
@@ -140,7 +144,7 @@ function BarisAspek({ a, terbuka, onToggle }) {
           <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-2">
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: area?.warna }} />
             <span className="truncate">
-              {area?.nama} · Semester {a.aspek.semester}
+              {area?.nama} · {t('Semester {n}', { n: a.aspek.semester })}
             </span>
           </span>
         </span>
@@ -153,7 +157,7 @@ function BarisAspek({ a, terbuka, onToggle }) {
           {a.terkunci ? (
             <IconLock size={17} className="ml-auto text-ink-3" />
           ) : (
-            <span className="text-[19px] font-extrabold text-ink">{a.nilai ?? '—'}</span>
+            <span className="text-[19px] font-extrabold text-ink">{a.nilai ?? '-'}</span>
           )}
         </span>
 
@@ -181,13 +185,13 @@ function BarisAspek({ a, terbuka, onToggle }) {
                       <span className="text-ink-3"> · {SUMBER[k.sumber]?.label ?? k.sumber}</span>
                     </span>
                     <span className="shrink-0 font-bold text-ink">
-                      {k.terisi ? k.nilai : <span className="font-semibold text-ink-3">belum masuk</span>}
+                      {k.terisi ? k.nilai : <span className="font-semibold text-ink-3">{t('belum masuk')}</span>}
                     </span>
                   </li>
                 ))}
               </ul>
               {a.alasanSementara ? (
-                <p className="mt-3 text-[13.5px] leading-relaxed text-ink-2">{a.alasanSementara}.</p>
+                <p className="mt-3 text-[13.5px] leading-relaxed text-ink-2">{t(a.alasanSementara)}.</p>
               ) : null}
             </>
           )}
@@ -198,6 +202,7 @@ function BarisAspek({ a, terbuka, onToggle }) {
 }
 
 function AspekSaya({ t }) {
+  const teks = useTeks()
   const [tab, setTab] = useState('semua')
   const [bukaId, setBukaId] = useState(null)
 
@@ -210,8 +215,10 @@ function AspekSaya({ t }) {
     <section className="kartu overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 pb-3 pt-5 sm:px-6">
         <div>
-          <h2 className="text-[17px] font-extrabold text-ink">Aspek penilaian</h2>
-          <p className="mt-0.5 text-[13.5px] text-ink-2">Ketuk salah satu untuk melihat komponen nilainya</p>
+          <h2 className="text-[17px] font-extrabold text-ink">{teks('Aspek penilaian')}</h2>
+          <p className="mt-0.5 text-[13.5px] text-ink-2">
+            {teks('Ketuk salah satu untuk melihat komponen nilainya')}
+          </p>
         </div>
       </div>
 
@@ -220,7 +227,7 @@ function AspekSaya({ t }) {
           batang gulir vertikal setinggi 1 px di ujung kanan baris ini. */}
       <div
         role="tablist"
-        aria-label="Saring aspek"
+        aria-label={teks('Saring aspek')}
         className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line px-4 sm:px-5"
       >
         {TAB.map((x) => {
@@ -241,7 +248,7 @@ function AspekSaya({ t }) {
                 (pilih ? 'border-brand-ink text-brand-ink' : 'border-transparent text-ink-2 hover:text-ink')
               }
             >
-              {x.label}
+              {teks(x.label)}
               <span className="ml-1.5 font-semibold text-ink-3">{jumlah}</span>
             </button>
           )
@@ -260,14 +267,16 @@ function AspekSaya({ t }) {
           ))}
         </ul>
       ) : (
-        <p className="px-6 py-10 text-center text-[14px] text-ink-2">Belum ada aspek di kelompok ini.</p>
+        <p className="px-6 py-10 text-center text-[14px] text-ink-2">
+          {teks('Belum ada aspek di kelompok ini.')}
+        </p>
       )}
 
       <Link
         href="/mahasiswa/transkrip"
         className="flex items-center justify-center gap-1.5 border-t border-line px-5 py-3.5 text-[14px] font-bold text-brand-ink transition hover:bg-surface-2"
       >
-        {sisa > 0 ? 'Lihat Selengkapnya' : 'Lihat transkrip lengkap'}
+        {teks(sisa > 0 ? 'Lihat Selengkapnya' : 'Lihat transkrip lengkap')}
         <IconChevronRight size={16} />
       </Link>
     </section>
@@ -277,10 +286,13 @@ function AspekSaya({ t }) {
 /* ------------------------------ capaian area ------------------------------ */
 
 function CapaianArea({ t }) {
+  const teks = useTeks()
   return (
     <section className="kartu px-5 py-5 sm:px-6">
-      <h2 className="text-[17px] font-extrabold text-ink">Capaian per area</h2>
-      <p className="mt-0.5 text-[13.5px] text-ink-2">Rata-rata aspek yang sudah dinilai di tiap area</p>
+      <h2 className="text-[17px] font-extrabold text-ink">{teks('Capaian per area')}</h2>
+      <p className="mt-0.5 text-[13.5px] text-ink-2">
+        {teks('Rata-rata aspek yang sudah dinilai di tiap area')}
+      </p>
 
       <ul className="mt-5 space-y-5">
         {Object.values(t.area).map((x) => {
@@ -291,7 +303,7 @@ function CapaianArea({ t }) {
                 <span className="flex min-w-0 items-center gap-2 text-[14.5px] font-bold text-ink">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: x.area.warna }} />
                   <span className="truncate">
-                    Area {x.area.id} · {x.area.nama}
+                    {teks('Area {kode}', { kode: x.area.id })} · {x.area.nama}
                   </span>
                 </span>
                 {terkunci ? (
@@ -306,7 +318,7 @@ function CapaianArea({ t }) {
                 <>
                   <ScoreBar value={x.nilai} color={x.area.warna} />
                   <p className="mt-1.5 text-[12.5px] text-ink-3">
-                    {x.dinilai} dari {x.total} aspek dinilai
+                    {teks('{n} dari {total} aspek dinilai', { n: x.dinilai, total: x.total })}
                   </p>
                 </>
               )}
@@ -321,10 +333,11 @@ function CapaianArea({ t }) {
 /* --------------------------- perjalanan semester -------------------------- */
 
 function PerjalananSemester({ t }) {
+  const teks = useTeks()
   const daftar = Object.values(t.semester)
   return (
     <section className="kartu px-5 py-5 sm:px-6">
-      <h2 className="text-[17px] font-extrabold text-ink">Perjalanan semester</h2>
+      <h2 className="text-[17px] font-extrabold text-ink">{teks('Perjalanan semester')}</h2>
 
       <ol className="mt-4">
         {daftar.map((s, i) => {
@@ -363,17 +376,22 @@ function PerjalananSemester({ t }) {
 
               <span className="min-w-0 flex-1 pt-0.5">
                 <span className="flex items-baseline justify-between gap-2">
-                  <span className="text-[15px] font-bold text-ink">Semester {s.semester}</span>
+                  <span className="text-[15px] font-bold text-ink">
+                    {teks('Semester {n}', { n: s.semester })}
+                  </span>
                   {keadaan !== 'terkunci' ? (
-                    <span className="text-[15px] font-bold text-ink">{s.nilai ?? '—'}</span>
+                    <span className="text-[15px] font-bold text-ink">{s.nilai ?? '-'}</span>
                   ) : null}
                 </span>
                 <span className="mt-0.5 block text-[13px] text-ink-2">
                   {keadaan === 'selesai'
-                    ? 'Selesai · ' + s.total + ' aspek'
+                    ? teks('Selesai · {total} aspek', { total: s.total })
                     : keadaan === 'berjalan'
-                      ? 'Sedang berjalan · ' + s.dinilai + ' dari ' + s.total + ' aspek dinilai'
-                      : 'Belum dibuka · ' + s.total + ' aspek'}
+                      ? teks('Sedang berjalan · {n} dari {total} aspek dinilai', {
+                          n: s.dinilai,
+                          total: s.total,
+                        })
+                      : teks('Belum dibuka · {total} aspek', { total: s.total })}
                 </span>
               </span>
             </li>
@@ -385,7 +403,7 @@ function PerjalananSemester({ t }) {
         href="/mahasiswa/peta"
         className="mt-5 inline-flex items-center gap-1.5 text-[14px] font-bold text-brand-ink hover:underline"
       >
-        Buka Road Map
+        {teks('Buka Peta Perjalanan')}
         <IconChevronRight size={16} />
       </Link>
     </section>
@@ -397,6 +415,7 @@ function PerjalananSemester({ t }) {
 export default function Dashboard() {
   // Ikut menghitung ulang begitu ada nilai yang masuk dari panel Kemahasiswaan.
   useStore()
+  const teks = useTeks()
   const student = useStudent()
   const t = transkripOf(student)
   const sertifikat = kelayakanSertifikat(student)
@@ -412,16 +431,19 @@ export default function Dashboard() {
       <header className="flex flex-wrap items-end justify-between gap-4 pt-2">
         <div className="min-w-0">
           <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink sm:text-[28px]">
-            {sapaan()}, {student.name.split(' ')[0]}
+            {teks(sapaan())}, {student.name.split(' ')[0]}
           </h1>
           <p className="mt-1.5 text-[15px] text-ink-2">
-            Semester {student.semesterAktif} dari {CONFIG.TOTAL_SEMESTER_PROGRAM} · Periode{' '}
-            {labelPeriode(PERIODE_AKTIF)}
+            {teks('Semester {n} dari {total}', {
+              n: student.semesterAktif,
+              total: CONFIG.TOTAL_SEMESTER_PROGRAM,
+            })}{' '}
+            · {teks('Periode {periode}', { periode: labelPeriode(PERIODE_AKTIF) })}
           </p>
         </div>
         <Link href="/mahasiswa/transkrip" className="btn-primary rounded-2xl px-5 py-3">
           <IconDocument size={18} />
-          Open Transcript
+          {teks('Buka Transkrip')}
         </Link>
       </header>
 
@@ -430,15 +452,20 @@ export default function Dashboard() {
         <Ubin ikon={IconGauge} judul="Nilai akhir">
           {/* Satu-satunya angka besar di halaman ini. */}
           <p className="text-[48px] font-extrabold leading-none tracking-tight text-ink">
-            {akhir.nilai ?? '—'}
+            {akhir.nilai ?? '-'}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {akhir.nilai != null ? <HurufBadge nilai={akhir.nilai} /> : null}
             <Badge tone={akhir.status === 'final' ? 'good' : 'warning'} icon={akhir.status === 'final' ? IconCheck : IconClock}>
-              {akhir.status === 'final' ? 'Final' : 'Sementara'}
+              {teks(akhir.status === 'final' ? 'Final' : 'Sementara')}
             </Badge>
           </div>
-          <p className="mt-2 text-[13px] text-ink-2">{akhir.basis}</p>
+          <p className="mt-2 text-[13px] text-ink-2">
+            {teks('berdasarkan {n} dari {total} aspek', {
+              n: akhir.aspekDinilai,
+              total: akhir.aspekTotal,
+            })}
+          </p>
 
           {/* Hanya di ponsel. Nilai akhir tetap terlihat sebagai kepala; tiga
               ubin lainnya dilipat di bawahnya, dan ringkasannya tetap tertulis
@@ -451,11 +478,15 @@ export default function Dashboard() {
             className="mt-4 flex w-full items-center gap-2 border-t border-line pt-3.5 text-left sm:hidden"
           >
             <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink-2">
-              {akhir.aspekDinilai}/{akhir.aspekTotal} dinilai · {akhir.aspekFinal} final · sertifikat{' '}
-              {sertifikat.layak ? 'siap' : 'belum'}
+              {teks('{n}/{total} dinilai, {final} final · sertifikat {keadaan}', {
+                n: akhir.aspekDinilai,
+                total: akhir.aspekTotal,
+                final: akhir.aspekFinal,
+                keadaan: teks(sertifikat.layak ? 'siap' : 'belum'),
+              })}
             </span>
             <span className="shrink-0 text-[13.5px] font-bold text-brand-ink">
-              {rinciBuka ? 'Tutup' : 'Rincian'}
+              {teks(rinciBuka ? 'Tutup' : 'Rincian')}
             </span>
             <IconChevronDown
               size={17}
@@ -479,12 +510,14 @@ export default function Dashboard() {
               aria-valuemin={0}
               aria-valuemax={akhir.aspekTotal}
               aria-valuenow={akhir.aspekDinilai}
-              aria-label="Aspek yang sudah dinilai"
+              aria-label={teks('Aspek yang sudah dinilai')}
             >
               <div className="h-full rounded-full bg-brand-ink" style={{ width: persenDinilai + '%' }} />
             </div>
             <p className="mt-2 text-[13px] text-ink-2">
-              {terkunci ? terkunci + ' aspek belum dibuka' : 'Semua aspek sudah dibuka'}
+              {terkunci
+                ? teks('{n} aspek belum dibuka', { n: terkunci })
+                : teks('Semua aspek sudah dibuka')}
             </p>
           </Ubin>
 
@@ -494,7 +527,11 @@ export default function Dashboard() {
               <span className="text-[18px] font-bold text-ink-3"> / {akhir.aspekTotal}</span>
             </p>
             <p className="mt-4 text-[13px] leading-relaxed text-ink-2">
-              {akhir.aspekFinal ? 'Sudah dikunci dan tidak akan berubah lagi' : 'Belum ada aspek yang dikunci'}
+              {teks(
+                akhir.aspekFinal
+                  ? 'Sudah dikunci dan tidak akan berubah lagi'
+                  : 'Belum ada aspek yang dikunci',
+              )}
             </p>
           </Ubin>
 
@@ -505,10 +542,12 @@ export default function Dashboard() {
             ke="/mahasiswa/sertifikat"
           >
             <p className="text-[22px] font-extrabold leading-tight text-ink">
-              {sertifikat.layak ? 'Siap diunduh' : 'Belum tersedia'}
+              {teks(sertifikat.layak ? 'Siap diunduh' : 'Belum tersedia')}
             </p>
             <p className="mt-3 flex items-center gap-1 text-[13px] text-ink-2">
-              {sertifikat.layak ? 'Buka untuk mengunduh' : sertifikat.gagal.length + ' syarat belum terpenuhi'}
+              {sertifikat.layak
+                ? teks('Buka untuk mengunduh')
+                : teks('{n} syarat belum terpenuhi', { n: sertifikat.gagal.length })}
               <IconChevronRight size={15} className="shrink-0" />
             </p>
           </Ubin>

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../src/lib/auth'
+import { panelUntuk, useAuth } from '../src/lib/auth'
 
 /* Pintu depan: mengarahkan ke panel sesuai peran, atau ke halaman masuk.
    Menunggu `siap` supaya pengguna yang sesinya masih dibaca tidak telanjur
@@ -13,7 +13,7 @@ export default function Beranda() {
 
   useEffect(() => {
     if (!siap) return
-    router.replace(!user ? '/masuk' : user.role === 'admin' ? '/admin' : '/mahasiswa')
+    router.replace(!user ? '/masuk' : panelUntuk(user.role))
   }, [user, siap, router])
 
   return null

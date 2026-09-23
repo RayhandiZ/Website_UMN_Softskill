@@ -132,7 +132,7 @@ export function programStudi(faculty = 'Semua') {
 /* --------------------------------- penilai -------------------------------- */
 
 const PENILAI = {
-  PDP: ['Tim PDP — Yohanes Adi, M.Psi.', 'Tim PDP — Ratna Widyastuti, M.Pd.', 'Tim PDP — Bagas Aryo, M.Psi.'],
+  PDP: ['Tim PDP: Yohanes Adi, M.Psi.', 'Tim PDP: Ratna Widyastuti, M.Pd.', 'Tim PDP: Bagas Aryo, M.Psi.'],
   MK: [
     'Suryasari, S.Kom., M.MSI.',
     'Adhi Kusnadi, S.T., M.Si.',
@@ -140,7 +140,7 @@ const PENILAI = {
     'Yustinus Prasetya, M.Th.',
     'Nurul Hidayah, M.Pd.',
   ],
-  ENGAGEMENT: ['Student Service — Andini Prameswari, M.Psi.', 'Student Service — Rizky Maulana, S.Psi.'],
+  ENGAGEMENT: ['Student Service: Andini Prameswari, M.Psi.', 'Student Service: Rizky Maulana, S.Psi.'],
 }
 
 /* ----------------------------------- nama --------------------------------- */
@@ -712,3 +712,265 @@ export function perluDitinjau(rows = STUDENTS) {
 
   return { dibawahAmbang, siapDikunci }
 }
+
+/* ==========================================================================
+   DOSEN PENGAMPU
+
+   Seorang dosen di sini bukan "punya akses ke semuanya". Ia memegang satu
+   KELAS: satu unit asesmen (PDP atau MK Humaniora) × satu semester × satu
+   program studi. Tiga hal itulah yang menentukan pengumpulan mana yang masuk
+   ke antreannya dan komponen mana yang boleh ia nilai.
+
+   Sumber ENGAGEMENT sengaja tidak diberikan kepada siapa pun di sini: itu
+   penilaian Student Service & Engagement, yang dikerjakan Biro Kemahasiswaan
+   sendiri lewat panelnya.
+   ========================================================================== */
+
+/** Inisial dari nama tanpa gelar — "Suryasari, S.Kom., M.MSI." → "SU". */
+function inisialDosen(nama) {
+  const bersih = nama.split(',')[0].trim().split(/\s+/)
+  return bersih.length > 1
+    ? (bersih[0][0] + bersih[1][0]).toUpperCase()
+    : bersih[0].slice(0, 2).toUpperCase()
+}
+
+const emailDosen = (nama) =>
+  nama
+    .split(',')[0]
+    .trim()
+    .split(/\s+/)
+    .map(slug)
+    .join('.') + '@lecturer.umn.ac.id'
+
+const d = ({ nip, nama, jabatan, sumber, semester, prodi }) => ({
+  id: 'DSN-' + nip.slice(-4),
+  nip,
+  nama,
+  inisial: inisialDosen(nama),
+  email: emailDosen(nama),
+  jabatan,
+  sumber,
+  semester,
+  prodi,
+  fakultas: FACULTY_OF[prodi] ?? 'Teknik & Informatika',
+})
+
+export const DOSEN = [
+  d({
+    nip: '0312078801',
+    nama: 'Suryasari, S.Kom., M.MSI.',
+    jabatan: 'Dosen MK Humaniora',
+    sumber: 'MK',
+    semester: 1,
+    prodi: 'Sistem Informasi',
+  }),
+  d({
+    nip: '0325118502',
+    nama: 'Rahmat Nugroho, S.Hum., M.Hum.',
+    jabatan: 'Dosen MK Humaniora',
+    sumber: 'MK',
+    semester: 2,
+    prodi: 'Sistem Informasi',
+  }),
+  d({
+    nip: '0410098703',
+    nama: 'Maria Ulfah, S.Psi., M.Psi.',
+    jabatan: 'Dosen MK Humaniora',
+    sumber: 'MK',
+    semester: 3,
+    prodi: 'Informatika',
+  }),
+  d({
+    nip: '0208088204',
+    nama: 'Bambang Setiawan, S.Sos., M.Si.',
+    jabatan: 'Fasilitator PDP',
+    sumber: 'PDP',
+    semester: 1,
+    prodi: 'Informatika',
+  }),
+  d({
+    nip: '0119059005',
+    nama: 'Yohanes Kurniawan, S.Fil., M.Th.',
+    jabatan: 'Fasilitator PDP',
+    sumber: 'PDP',
+    semester: 2,
+    prodi: 'Komunikasi Strategis',
+  }),
+]
+
+export const getDosenByNip = (nip) => DOSEN.find((x) => x.nip === String(nip).trim()) ?? null
+
+export const getDosenByEmail = (email) => {
+  const cari = String(email ?? '').trim().toLowerCase()
+  return DOSEN.find((x) => x.email.toLowerCase() === cari) ?? null
+}
+
+/** Beberapa alamat contoh, dipakai membantu pengguna yang salah ketik. */
+export const contohEmailDosen = (n = 2) => DOSEN.slice(0, n).map((x) => x.email)
+
+/** Kelas yang dipegang seorang dosen — dipakai menyaring daftar pengumpulan. */
+export function komponenDosen(dosen) {
+  if (!dosen) return []
+  return getAspekList()
+    .filter((a) => a.semester === dosen.semester)
+    .flatMap((a) => getKomponen(a.id))
+    .filter((k) => k.sumber === dosen.sumber)
+}
+
+/* ==========================================================================
+   PENGUMPULAN MAHASISWA
+
+   Ini konsep baru di aplikasi: mahasiswa MENGUMPULKAN berkas, bukan memasukkan
+   nilai. Aturan R8 tetap utuh — tidak ada satu pun angka di sini yang berasal
+   dari mahasiswa. Yang mereka kirim hanya bukti pekerjaan; angkanya lahir di
+   panel dosen.
+
+   Dibangkitkan sekali saat modul dimuat, dari keadaan DASAR data mahasiswa —
+   sebelum store memutar ulang perubahan nilai. Jadi daftarnya tidak berubah
+   sendiri setiap ada yang menyimpan nilai; yang berubah hanya STATUS tiap
+   baris, dan itu dihitung di store.js dari nilai yang benar-benar tersimpan.
+
+   PRNG-nya sengaja instance sendiri dengan seed berbeda. Kalau ikut memakai
+   `rand` di atas, setiap penambahan baris di sini akan menggeser seluruh nilai
+   mahasiswa yang sudah ada — data contoh yang deterministik justru jadi
+   berubah-ubah.
+   ========================================================================== */
+
+const JUDUL_BERKAS = {
+  TUGAS: 'Laporan tugas',
+  SIKAP: 'Lembar refleksi sikap',
+  UTS: 'Berkas UTS',
+  UAS: 'Berkas UAS',
+}
+
+const BENTUK = ['PDF', 'DOCX', 'Tautan Drive']
+
+/** '2026-09-01' + n hari, dikembalikan sebagai 'YYYY-MM-DD HH:MM'. */
+function waktuKumpul(hari, menit) {
+  const t = new Date(Date.UTC(2026, 8, 1, 8, 0) + hari * 86400000 + menit * 60000)
+  return t.toISOString().slice(0, 16).replace('T', ' ')
+}
+
+function bangunPengumpulan() {
+  const acak = mulberry32(20260917)
+  const hasil = []
+  let urut = 0
+
+  for (const dosen of DOSEN) {
+    const komponen = komponenDosen(dosen)
+    if (!komponen.length) continue
+
+    const kelas = STUDENTS.filter(
+      (m) => m.program === dosen.prodi && m.semesterAktif >= dosen.semester,
+    )
+
+    for (const m of kelas) {
+      for (const k of komponen) {
+        /* Tidak semua mahasiswa mengumpulkan — daftar yang selalu penuh tidak
+           akan pernah menunjukkan rupa halaman ini pada hari biasa.
+
+           Yang nilainya SUDAH ada tetap ikut masuk daftar: ia tetap sebuah
+           pengumpulan, hanya statusnya sudah "dinilai". Menyaringnya di sini
+           akan membuat dosen kehilangan riwayat pekerjaannya sendiri. */
+        if (acak() > 0.62) continue
+
+        urut++
+        const hari = Math.floor(acak() * 12)
+        const bentuk = BENTUK[Math.floor(acak() * BENTUK.length)]
+        hasil.push({
+          id: 'PG-' + String(urut).padStart(4, '0'),
+          nim: m.nim,
+          nama: m.name,
+          program: m.program,
+          fakultas: m.faculty,
+          angkatanId: m.angkatanId,
+          angkatanLabel: m.angkatanLabel,
+          semester: dosen.semester,
+          sumber: dosen.sumber,
+          dosenNip: dosen.nip,
+          komponenId: k.id,
+          komponenLabel: k.label,
+          aspekId: k.aspekId,
+          /* Apa yang dikirim mahasiswa. Nama komponennya sudah ada di
+             komponenLabel, jadi baris ini menyebut BENTUKNYA. */
+          jenisBerkas: JUDUL_BERKAS[k.jenis] ?? 'Berkas pengumpulan',
+          bentuk,
+          berkas:
+            bentuk === 'Tautan Drive'
+              ? 'drive.google.com/…/' + k.id.toLowerCase()
+              : slug(m.name.split(' ')[0]) + '-' + k.id.toLowerCase() + '.' + bentuk.toLowerCase(),
+          waktu: waktuKumpul(hari, Math.floor(acak() * 600)),
+          /* Lewat hari ke-9 dihitung terlambat. Penanda ini tidak mengubah
+             nilai apa pun — ia hanya informasi bagi dosen yang menilai. */
+          terlambat: hari > 9,
+        })
+      }
+    }
+  }
+
+  return hasil.sort((a, b) => (a.waktu < b.waktu ? 1 : -1))
+}
+
+export const PENGUMPULAN = bangunPengumpulan()
+
+/** Pengumpulan yang menjadi tanggung jawab seorang dosen. */
+export const pengumpulanDosen = (nip) => PENGUMPULAN.filter((p) => p.dosenNip === nip)
+
+/* --------------------------------------------------------------------------
+   Dua usulan nilai yang sudah menunggu sejak awal.
+
+   Tanpa ini, halaman Persetujuan Nilai Dosen selalu kosong sampai seseorang
+   sempat masuk sebagai dosen dan mengirim sesuatu — dan fitur yang tidak
+   pernah terlihat akan dikira rusak.
+
+   Isinya mengacu ke pengumpulan yang benar-benar ada dan benar-benar belum
+   bernilai, jadi menyetujuinya menghasilkan perubahan yang sungguhan, bukan
+   angka hiasan yang tidak nyambung ke mana-mana.
+   -------------------------------------------------------------------------- */
+function bangunUsulanAwal() {
+  const acak = mulberry32(20260918)
+  const hasil = []
+
+  /* Dosen ke-2 dan ke-3: keduanya punya antrean cukup panjang, dan keduanya
+     memakai cara berbeda supaya dua bentuk usulan terlihat di layar. */
+  const rencana = [
+    { dosen: DOSEN[1], cara: 'manual', jumlah: 5, catatan: 'Nilai tugas 2 sudah termasuk revisi.' },
+    { dosen: DOSEN[2], cara: 'import', jumlah: 8, catatan: '' },
+  ]
+
+  rencana.forEach(({ dosen, cara, jumlah, catatan }, i) => {
+    const belum = PENGUMPULAN.filter(
+      (p) =>
+        p.dosenNip === dosen.nip &&
+        !getStudentByNim(p.nim)?.nilai?.[p.aspekId]?.komponen?.[p.komponenId],
+    ).slice(0, jumlah)
+    if (!belum.length) return
+
+    const angkatan = [...new Set(belum.map((p) => p.angkatanId))]
+    hasil.push({
+      id: 'U-AWAL-' + (i + 1),
+      dosenNip: dosen.nip,
+      dosenNama: dosen.nama,
+      sumber: dosen.sumber,
+      semester: dosen.semester,
+      prodi: dosen.prodi,
+      angkatanId: angkatan.length === 1 ? angkatan[0] : 'campuran',
+      cara,
+      catatan,
+      waktu: waktuKumpul(12 + i, Math.floor(acak() * 400)),
+      status: 'menunggu',
+      entri: belum.map((p) => ({
+        nim: p.nim,
+        nama: p.nama,
+        komponenId: p.komponenId,
+        nilai: 70 + Math.floor(acak() * 26),
+      })),
+      keputusan: null,
+      batchId: null,
+    })
+  })
+
+  return hasil
+}
+
+export const USULAN_AWAL = bangunUsulanAwal()

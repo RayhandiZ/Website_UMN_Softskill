@@ -2,10 +2,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { TautanNav } from '../lib/nav'
-import { useAuth } from '../lib/auth'
+import { panelUntuk, useAuth } from '../lib/auth'
+import { useTeks } from '../lib/bahasa'
 import { useTheme } from '../lib/theme'
 import Laci from './Laci'
 import MenuAkun from './MenuAkun'
+import TombolBahasa from './TombolBahasa'
 import { IconLogo, IconMenu, IconMoon, IconSun } from './Icons'
 
 /* Bilah atas panel Kemahasiswaan. Panel mahasiswa memakai kerangka sendiri
@@ -32,10 +34,11 @@ import { IconLogo, IconMenu, IconMoon, IconSun } from './Icons'
 export default function Navbar({ links = [], kelompok = null, aksi = null, foto = null }) {
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
+  const t = useTeks()
   const router = useRouter()
   const [laci, setLaci] = useState(false)
 
-  const profilKe = user?.role === 'admin' ? '/admin/profil' : '/mahasiswa/profil'
+  const profilKe = panelUntuk(user?.role) + '/profil'
 
   return (
     <header className="sticky top-0 z-40 bg-brand text-white">
@@ -46,7 +49,7 @@ export default function Navbar({ links = [], kelompok = null, aksi = null, foto 
         <button
           type="button"
           onClick={() => setLaci(true)}
-          aria-label="Buka menu navigasi"
+          aria-label={t('Buka menu navigasi')}
           aria-expanded={laci}
           className="-ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-white transition hover:bg-white/10"
         >
@@ -71,13 +74,15 @@ export default function Navbar({ links = [], kelompok = null, aksi = null, foto 
                 (isActive ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white')
               }
             >
-              {l.label}
+              {t(l.label)}
             </TautanNav>
           ))}
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
           {aksi}
+
+          <TombolBahasa nada="onbrand" />
 
           <span className="mx-1.5 hidden h-6 w-px bg-white/20 sm:block" />
 
@@ -86,7 +91,7 @@ export default function Navbar({ links = [], kelompok = null, aksi = null, foto 
           <button
             type="button"
             onClick={toggle}
-            aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
+            aria-label={t(theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap')}
             className="ml-1 grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-white transition hover:bg-white/20"
           >
             {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
@@ -107,7 +112,7 @@ export default function Navbar({ links = [], kelompok = null, aksi = null, foto 
                 /* Putih 55% = kontras 5,32:1 di atas latar biru tua — masih di
                    atas ambang 4,5:1 untuk teks kecil. */
                 <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-[.12em] text-white/55">
-                  {g.judul}
+                  {t(g.judul)}
                 </p>
               ) : null}
               <ul className="space-y-0.5">
@@ -133,7 +138,7 @@ export default function Navbar({ links = [], kelompok = null, aksi = null, foto 
                             />
                           ) : null}
                           {l.icon ? <l.icon size={19} className="shrink-0" /> : null}
-                          <span className="truncate">{l.label}</span>
+                          <span className="truncate">{t(l.label)}</span>
                           {l.lencana ? (
                             <span className="ml-auto grid h-5 min-w-[20px] place-items-center rounded-full bg-[var(--accent)] px-1.5 text-[11px] font-extrabold text-[#2b1c00]">
                               {l.lencana}
@@ -155,7 +160,7 @@ export default function Navbar({ links = [], kelompok = null, aksi = null, foto 
             onClick={() => setLaci(false)}
             className="block rounded-xl px-3 py-2.5 text-[15px] font-bold text-white/75 transition hover:bg-white/10 hover:text-white"
           >
-            Profil
+            {t('Profil')}
           </Link>
           <button
             type="button"
@@ -166,7 +171,7 @@ export default function Navbar({ links = [], kelompok = null, aksi = null, foto 
             }}
             className="mt-0.5 block w-full rounded-xl px-3 py-2.5 text-left text-[15px] font-bold text-[#ffb4b4] transition hover:bg-white/10"
           >
-            Keluar
+            {t('Keluar')}
           </button>
         </nav>
       </Laci>

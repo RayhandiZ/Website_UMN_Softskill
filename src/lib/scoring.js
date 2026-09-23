@@ -224,7 +224,7 @@ export function telaahAspek(student, aspekId) {
     }
     return {
       status: 'berjalan',
-      alasan: 'Seluruh komponen sudah dinilai — menunggu Semester ' + aspek.semester + ' ditutup',
+      alasan: 'Seluruh komponen sudah dinilai, menunggu semester ini ditutup',
       siapDikunci: true,
       tanda,
     }
@@ -233,7 +233,7 @@ export function telaahAspek(student, aspekId) {
   // mode 'manual'
   return {
     status: 'berjalan',
-    alasan: 'Seluruh komponen sudah dinilai — menunggu penguncian oleh Kemahasiswaan',
+    alasan: 'Seluruh komponen sudah dinilai, menunggu penguncian oleh Kemahasiswaan',
     siapDikunci: true,
     tanda,
   }

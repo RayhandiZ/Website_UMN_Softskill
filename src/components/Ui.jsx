@@ -1,4 +1,5 @@
 import { IconChevronDown, IconInfo, IconLock, IconSearch } from './Icons'
+import { useTeks } from '../lib/bahasa'
 import { hurufMutu } from '../lib/scoring'
 
 /* ------------------------------- kartu dasar ------------------------------ */
@@ -70,24 +71,26 @@ const TONE_HURUF = { A: 'good', B: 'brand', C: 'warning', D: 'serious' }
 
 /** Huruf mutu resmi. Nilai di bawah 60 bukan huruf — ia sebuah status. */
 export function HurufBadge({ nilai, sementara = false, panjang = false }) {
-  if (nilai == null) return <Badge tone="neutral">Belum dinilai</Badge>
+  const t = useTeks()
+  if (nilai == null) return <Badge tone="neutral">{t('Belum dinilai')}</Badge>
   const r = hurufMutu(nilai)
   const tone = r.huruf ? TONE_HURUF[r.huruf] : 'critical'
   return (
     <Badge tone={tone}>
-      {r.huruf ? r.huruf : 'Belum Memenuhi'}
-      {panjang && r.huruf ? ' · ' + r.label : ''}
-      {sementara ? ' · sementara' : ''}
+      {r.huruf ? r.huruf : t('Belum Memenuhi')}
+      {panjang && r.huruf ? ' · ' + t(r.label) : ''}
+      {sementara ? ' · ' + t('sementara') : ''}
     </Badge>
   )
 }
 
 /** Penanda aspek yang semesternya belum tiba (R2) — bentuk, bukan sekadar warna. */
 export function Terkunci({ semester, ringkas = false }) {
+  const t = useTeks()
   return (
     <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-ink-3">
       <IconLock size={14} />
-      {ringkas ? 'Terkunci' : 'Dibuka pada Semester ' + semester}
+      {ringkas ? t('Terkunci') : t('Dibuka pada Semester {n}', { n: semester })}
     </span>
   )
 }
@@ -104,9 +107,10 @@ export function CatatanKaki({ children, icon = true }) {
 
 /** Halaman yang dijadwalkan pada fase berikutnya — jujur, bukan halaman kosong. */
 export function SegeraHadir({ judul, fase, children }) {
+  const t = useTeks()
   return (
     <Card className="card-pad">
-      <p className="label">Fase {fase}</p>
+      <p className="label">{t('Fase {n}', { n: fase })}</p>
       <h1 className="mt-2 text-[22px] font-extrabold tracking-tight text-ink">{judul}</h1>
       <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-ink-2">{children}</p>
       {/* <p className="mt-4 text-[13px] text-ink-3">
@@ -204,7 +208,13 @@ export function ScoreRing({ value, size = 132, stroke = 12, color = 'var(--brand
 
 /* --------------------------------- kontrol -------------------------------- */
 
-export function Select({ label, value, onChange, options, className = '' }) {
+/**
+ * `tampilkan` menerjemahkan LABEL pilihan tanpa menyentuh nilainya. Nilai yang
+ * dikirim ke induk tetap kalimat aslinya, sehingga penyaring di halaman tidak
+ * perlu tahu bahasa apa yang sedang aktif.
+ */
+export function Select({ label, value, onChange, options, className = '', tampilkan }) {
+  const tampil = tampilkan ?? ((x) => x)
   return (
     <label className={'block ' + className}>
       {label ? <span className="mb-1.5 block label">{label}</span> : null}
@@ -216,7 +226,7 @@ export function Select({ label, value, onChange, options, className = '' }) {
         >
           {options.map((o) => (
             <option key={o} value={o}>
-              {o}
+              {tampil(o)}
             </option>
           ))}
         </select>

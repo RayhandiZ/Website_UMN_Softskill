@@ -19,6 +19,11 @@ import Students from '../src/halaman/admin/Students'
 import StudentDetail from '../src/halaman/admin/StudentDetail'
 import Programs from '../src/halaman/admin/Programs'
 import Nilai from '../src/halaman/admin/Nilai'
+import UsulanAdmin from '../src/halaman/admin/Usulan'
+import DosenLayout from '../src/halaman/dosen/DosenLayout'
+import Masuk from '../src/halaman/dosen/Masuk'
+import NilaiDosen from '../src/halaman/dosen/Nilai'
+import UsulanDosen from '../src/halaman/dosen/Usulan'
 
 /* Dibuka untuk uji sinkronisasi foto profil. */
 export { kunciSesi, simpanProfil } from '../src/lib/profil'
@@ -47,6 +52,12 @@ const admin = (isi) => (
   </RequireRole>
 )
 
+const dosen = (isi) => (
+  <RequireRole role="dosen">
+    <DosenLayout>{isi}</DosenLayout>
+  </RequireRole>
+)
+
 const RUTE = {
   '/masuk': { pohon: () => <Login />, params: {} },
   '/mahasiswa': { pohon: () => mahasiswa(<Dashboard />) },
@@ -61,6 +72,11 @@ const RUTE = {
   '/admin/program-studi': { pohon: () => admin(<Programs />) },
   '/admin/nilai': { pohon: () => admin(<Nilai />) },
   '/admin/profil': { pohon: () => admin(<Profil />) },
+  '/admin/usulan': { pohon: () => admin(<UsulanAdmin />) },
+  '/dosen': { pohon: () => dosen(<Masuk />) },
+  '/dosen/nilai': { pohon: () => dosen(<NilaiDosen />) },
+  '/dosen/usulan': { pohon: () => dosen(<UsulanDosen />) },
+  '/dosen/profil': { pohon: () => dosen(<Profil />) },
 }
 
 /* Memasang satu rute lengkap dengan penyedia konteks yang sama persis dengan
@@ -87,9 +103,29 @@ async function pasang(rute) {
   return { el, lepas }
 }
 
-const klik = async (node) => {
+/* Peristiwa penunjuk. jsdom belum punya PointerEvent, jadi dipakai MouseEvent
+   yang ditempeli pointerId — React membaca peristiwa aslinya dari nama dan
+   propertinya, bukan dari kelas pembungkusnya. */
+const tunjuk = async (node, jenis, clientX) => {
   await act(async () => {
-    node?.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }))
+    const ev = new window.MouseEvent(jenis, {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      button: 0,
+    })
+    ev.pointerId = 1
+    node?.dispatchEvent(ev)
+  })
+}
+
+/* detail 0 meniru klik dari papan ketik atau .click() dari kode; 1 atau lebih
+   meniru klik dari tetikus. Pemilih bahasa membedakan keduanya. */
+const klik = async (node, detail = 0) => {
+  await act(async () => {
+    node?.dispatchEvent(
+      new window.MouseEvent('click', { bubbles: true, cancelable: true, detail }),
+    )
   })
 }
 
@@ -659,7 +695,11 @@ export async function ujiLipatOverview() {
     adaTombol: !!tombolHalaman,
     tombolKhususPonsel:
       !!tombolHalaman && tombolHalaman.closest('li').className.split(' ').includes('sm:hidden'),
-    limaTerlipatAwal: kartuTersembunyi() === 5,
+    /* Jumlahnya dihitung dari daftar itu sendiri: satu kartu selalu terlihat,
+       sisanya terlipat. Menuliskan angkanya sebagai tetapan membuat uji ini
+       pecah setiap kali ada halaman baru ditambahkan — padahal yang ingin
+       dijaga adalah perilakunya, bukan banyaknya kartu. */
+    terlipatAwal: kartuTersembunyi() === el.querySelectorAll('#halaman-lain > li').length - 2,
     /* Dicocokkan per kata, bukan per potongan teks: 'sm:hidden' pada baris
        tombol mengandung kata 'hidden' tetapi bukan kelas yang dimaksud. */
     tetapUtuhDiLayarLebar: [...el.querySelectorAll('#halaman-lain > li')].every((li) => {
@@ -671,6 +711,312 @@ export async function ujiLipatOverview() {
   hasil.halaman.tidakAdaYangTersembunyiSesudah = kartuTersembunyi() === 0
 
   lepas()
+  return hasil
+}
+
+/* --------------------------------------------------------------------------
+   Pemilih bahasa dan layanan bantuan di ketiga panel.
+
+   Dua keputusan yang dijaga di sini, dan keduanya mudah sekali hilang saat
+   kerangka panel disentuh lagi nanti:
+
+   - Pemilih bahasa ada di SEMUA panel. Kalau hanya dipasang di satu kerangka,
+     dua panel lain akan terkunci di Indonesia tanpa ada yang menyadarinya.
+   - Tombol bantuan ada di panel mahasiswa dan dosen, TIDAK di panel
+     Kemahasiswaan. Merekalah yang menjawab pertanyaan itu, jadi tombol yang
+     menautkan mereka ke diri sendiri tidak menuju ke mana pun.
+   -------------------------------------------------------------------------- */
+export async function ujiPanelLain(rute) {
+  /* Pilihan bahasa bertahan di penyimpanan. Tanpa dibersihkan, panel kedua
+     sudah berbahasa Inggris sejak dibuka dan menekan EN tidak mengubah apa
+     pun — uji ini akan gagal karena keadaan sisa, bukan karena ada yang rusak. */
+  try {
+    localStorage.removeItem('sk5c.bahasa')
+  } catch {
+    /* diabaikan */
+  }
+
+  const { el, lepas } = await pasang(rute)
+  const hasil = {
+    adaPemilihBahasa: Boolean(el.querySelector('[role="group"][aria-label]')),
+    adaTombolBantuan: Boolean(el.querySelector('button[aria-controls="panel-layanan"]')),
+  }
+
+  /* Menekan EN harus benar-benar mengganti isi halaman, bukan hanya bilahnya. */
+  const en = [...el.querySelectorAll('[role="group"][aria-label] button')].find(
+    (b) => b.textContent.trim() === 'EN',
+  )
+  const sebelum = el.textContent
+  await klik(en, 0)
+  hasil.isiIkutBerganti = el.textContent !== sebelum
+
+  lepas()
+  return hasil
+}
+
+/* --------------------------------------------------------------------------
+   Layanan tambahan yang mengambang.
+
+   Yang dijaga di sini bukan rupanya, melainkan janji-janji kecil yang mudah
+   sekali hilang tanpa ketahuan: tombolnya benar-benar mengambang (bukan ikut
+   tergulir), tidak ikut tercetak, tautannya menunjuk ke kontak yang benar, dan
+   tautan keluar tidak membocorkan window.opener.
+   -------------------------------------------------------------------------- */
+export async function ujiLayanan(rute = '/mahasiswa') {
+  const { el, lepas } = await pasang(rute)
+  const hasil = {}
+
+  const tombol = el.querySelector('button[aria-controls="panel-layanan"]')
+  const panel = () => el.querySelector('#panel-layanan')
+  const wadah = tombol?.parentElement
+
+  hasil.adaTombol = Boolean(tombol)
+  hasil.mengambang = Boolean(wadah && wadah.className.split(' ').includes('fixed'))
+  hasil.takIkutTercetak = Boolean(wadah && wadah.className.includes('print:hidden'))
+  /* Harus di bawah laci navigasi yang z-50, kalau tidak ia akan mengambang di
+     atas lapisan gelapnya saat laci dibuka. */
+  hasil.diBawahLaci = Boolean(wadah && wadah.className.split(' ').includes('z-40'))
+  hasil.tertutupAwal = panel() === null
+  hasil.menyebutKeadaan = tombol?.getAttribute('aria-expanded') === 'false'
+
+  await klik(tombol)
+  hasil.terbuka = panel() !== null
+  hasil.keadaanIkutBerubah = tombol?.getAttribute('aria-expanded') === 'true'
+
+  const tautan = [...(panel()?.querySelectorAll('a') ?? [])]
+  hasil.tigaSaluran = tautan.length === 3
+  const href = tautan.map((a) => a.getAttribute('href') ?? '')
+  hasil.adaWhatsapp = href.some((h) => h.startsWith('https://wa.me/'))
+  hasil.adaTelepon = href.some((h) => h.startsWith('tel:'))
+  hasil.adaSurel = href.some((h) => h.startsWith('mailto:'))
+  /* Nomor tel: tidak boleh memuat spasi, sebagian peramban menolaknya. */
+  hasil.telSah = href.filter((h) => h.startsWith('tel:')).every((h) => !/\s/.test(h))
+
+  const keluar = tautan.filter((a) => a.getAttribute('target') === '_blank')
+  hasil.tautanKeluarAman =
+    keluar.length > 0 && keluar.every((a) => (a.getAttribute('rel') ?? '').includes('noopener'))
+
+  hasil.adaJamLayanan = /08\.00/.test(panel()?.textContent ?? '')
+  hasil.berkaca = Boolean(panel() && panel().className.split(' ').includes('kaca'))
+  hasil.berurutanMasuk = [...(panel()?.querySelectorAll('.layanan-item') ?? [])].some(
+    (li) => li.style.animationDelay && li.style.animationDelay !== '0ms',
+  )
+
+  /* Escape menutup, dan fokus kembali ke tombolnya. */
+  await act(async () => {
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  })
+  hasil.escMenutup = panel() === null
+
+  lepas()
+  return hasil
+}
+
+/* --------------------------------------------------------------------------
+   Menyeret pil pemilih bahasa.
+
+   Yang diuji di sini perilakunya, bukan rupanya: pil boleh ditahan lalu
+   diseret, seretan yang tidak sampai separuh jalan kembali ke tempat semula,
+   dan seretan tidak boleh terhitung dua kali oleh klik yang menyusul.
+   -------------------------------------------------------------------------- */
+export async function ujiSeretBahasa() {
+  try {
+    localStorage.removeItem('sk5c.bahasa')
+  } catch {
+    /* diabaikan */
+  }
+
+  const { el, lepas } = await pasang('/mahasiswa')
+  const hasil = {}
+
+  const grup = el.querySelector('[role="group"][aria-label]')
+  const pil = grup?.querySelector('[aria-hidden="true"]')
+  const inggris = () => /Final score/.test(el.textContent)
+
+  /* jsdom tidak menata letak, jadi getBoundingClientRect-nya selalu nol.
+     Kendalinya dipalsukan berada di x = 100 selebar 74 px, supaya perhitungan
+     "jari dilepas di segmen mana" benar-benar diuji, bukan dilewati. */
+  grup.getBoundingClientRect = () => ({
+    left: 100, right: 174, top: 0, bottom: 34, width: 74, height: 34, x: 100, y: 0,
+  })
+  const KIRI = 118 // di dalam segmen ID
+  const KANAN = 155 // di dalam segmen EN
+
+  hasil.adaPil = Boolean(pil)
+  hasil.pilBerkaca = Boolean(pil && pil.className.split(' ').includes('pil-kaca'))
+  hasil.mulaiDiKiri = Boolean(pil && pil.style.transform.includes('translateX(0px)'))
+
+  /* Satu ketukan tetikus utuh: turun dan naik di titik yang sama. */
+  const ketuk = async (x) => {
+    await tunjuk(grup, 'pointerdown', x)
+    await tunjuk(grup, 'pointerup', x)
+  }
+
+  /* ---- 1. KLIK BIASA, lalu klik susulan dari peramban. ---- */
+  await ketuk(KANAN)
+  hasil.klikBiasaMengganti = inggris()
+  await klik(grup, 1)
+  hasil.klikSusulanDiabaikan = inggris()
+
+  /* ---- 2. Klik biasa kembali ke segmen kiri. ---- */
+  await ketuk(KIRI)
+  hasil.klikBiasaBisaKembali = !inggris()
+
+  /* ---- 3. PAPAN KETIK. Klik ber-detail 0 datang dari Enter atau Spasi, dan
+     harus tetap dilayani onClick tombolnya. Diuji di sini, setelah ketukan
+     biasa — bukan setelah seretan, karena seretan memang sengaja menelan satu
+     klik susulan dan itu perilaku yang benar. ---- */
+  await klik(grup.querySelectorAll('button')[1], 0)
+  hasil.papanKetikJalan = inggris()
+
+  await ketuk(KIRI)
+
+  /* ---- 4. SERET penuh ke kanan lalu lepas. ---- */
+  await tunjuk(grup, 'pointerdown', KIRI)
+  await tunjuk(grup, 'pointermove', KIRI + 40)
+  hasil.pilIkutJari = Boolean(pil && !pil.style.transform.includes('translateX(0px)'))
+  hasil.transisiMatiSaatDiseret = Boolean(pil && pil.style.transition.includes('.12s'))
+  await tunjuk(grup, 'pointerup', KIRI + 40)
+  hasil.seretMengganti = inggris()
+  hasil.transisiPulih = Boolean(pil && pil.style.transition.includes('.42s'))
+
+  /* ---- 5. Klik susulan sesudah SERETAN mendarat di tombol asal, dan harus
+     diabaikan walau detail-nya 0 (perilaku peramban ponsel). ---- */
+  await klik(grup.querySelector('button'), 0)
+  hasil.seretTakDibalikSentuhan = inggris()
+
+  /* ---- 6. Seret pendek dari EN: belum melewati separuh, tetap di EN. ---- */
+  await tunjuk(grup, 'pointerdown', KANAN)
+  await tunjuk(grup, 'pointermove', KANAN - 10)
+  await tunjuk(grup, 'pointerup', KANAN - 10)
+  hasil.seretPendekKembali = inggris()
+
+  lepas()
+  return hasil
+}
+
+/* --------------------------------------------------------------------------
+   Pemilih bahasa.
+
+   Yang diuji bukan isi kamusnya, melainkan MEKANISMENYA: bahwa halaman benar
+   benar berganti bahasa saat tombolnya ditekan, bahwa pilihannya tersimpan,
+   dan bahwa render pertama selalu Indonesia — sebab render pertama di peramban
+   harus sama persis dengan HTML dari server, kalau tidak React menolak
+   hidrasinya.
+   -------------------------------------------------------------------------- */
+export async function ujiBahasa() {
+  try {
+    localStorage.removeItem('sk5c.bahasa')
+  } catch {
+    /* diabaikan */
+  }
+
+  const { el, lepas } = await pasang('/mahasiswa')
+  const hasil = {}
+
+  const tombol = (kode) =>
+    [...el.querySelectorAll('[role="group"][aria-label] button')].find(
+      (b) => b.textContent.trim() === kode,
+    )
+
+  const teks = () => el.textContent
+
+  hasil.adaPemilih = Boolean(tombol('ID') && tombol('EN'))
+  hasil.mulaiIndonesia = tombol('ID')?.getAttribute('aria-pressed') === 'true'
+  hasil.isiIndonesia = /Nilai akhir/.test(teks()) && !/Final score/.test(teks())
+
+  await klik(tombol('EN'))
+  hasil.inggrisAktif = tombol('EN')?.getAttribute('aria-pressed') === 'true'
+  hasil.isiInggris = /Final score/.test(teks()) && /Aspects graded/.test(teks())
+  hasil.judulIkutBerganti = /Assessment aspects/.test(teks())
+  hasil.menuIkutBerganti = /Road Map/.test(teks())
+  hasil.tersimpan = (() => {
+    try {
+      return localStorage.getItem('sk5c.bahasa') === 'en'
+    } catch {
+      return false
+    }
+  })()
+  hasil.langDiperbarui = document.documentElement.lang === 'en'
+
+  /* Penanda {dalamKurung} harus terisi, bukan tampil mentah. */
+  hasil.penandaTerisi = !/\{(?:n|total|final|keadaan|periode)\}/.test(teks())
+
+  await klik(tombol('ID'))
+  hasil.kembaliIndonesia = /Nilai akhir/.test(teks()) && !/Final score/.test(teks())
+
+  lepas()
+  return hasil
+}
+
+/* --------------------------------------------------------------------------
+   Alur lengkap dosen → Kemahasiswaan.
+
+   Yang diuji bukan tampilannya, melainkan JANJI yang dibuat panel dosen:
+   nilai yang dikirim TIDAK boleh menyentuh transkrip sebelum disetujui.
+   Karena itu tiap langkah diperiksa terhadap data mahasiswa yang sebenarnya,
+   bukan terhadap tulisan di layar.
+   -------------------------------------------------------------------------- */
+export async function ujiAlurDosen() {
+  const { DOSEN, pengumpulanDosen, getStudentByNim } = await import('../src/lib/mockData')
+  const { statusPengumpulan, usulkanNilai, putuskanUsulan, usulanMenunggu } = await import(
+    '../src/lib/store'
+  )
+
+  const d = DOSEN[0]
+  const nilaiTersimpan = (p) =>
+    getStudentByNim(p.nim)?.nilai?.[p.aspekId]?.komponen?.[p.komponenId]?.nilai ?? null
+
+  const antre = pengumpulanDosen(d.nip)
+    .filter((p) => statusPengumpulan(p).id === 'masuk')
+    .slice(0, 3)
+
+  const hasil = { adaAntrean: antre.length === 3 }
+
+  /* 1. Dosen mengusulkan. */
+  const u = usulkanNilai({
+    dosen: d,
+    cara: 'manual',
+    catatan: 'uji alur',
+    entri: antre.map((p) => ({ nim: p.nim, komponenId: p.komponenId, nilai: 88 })),
+  })
+  hasil.usulanTercatat = u.status === 'menunggu' && u.entri.length === 3
+  hasil.belumMasukTranskrip = antre.every((p) => nilaiTersimpan(p) === null)
+  hasil.statusJadiMenunggu = antre.every((p) => statusPengumpulan(p).id === 'menunggu')
+  hasil.masukAntreanAdmin = usulanMenunggu().some((x) => x.id === u.id)
+
+  /* 2. Kemahasiswaan menyetujui. */
+  hasil.disetujui = putuskanUsulan(u.id, 'disetujui', { aktor: 'Uji' }) === true
+  hasil.masukTranskrip = antre.every((p) => nilaiTersimpan(p) === 88)
+  hasil.statusJadiDinilai = antre.every((p) => statusPengumpulan(p).id === 'dinilai')
+  hasil.punyaBatch = Boolean(u.batchId)
+  hasil.tidakBisaDiputusDuaKali = putuskanUsulan(u.id, 'ditolak', { aktor: 'Uji' }) === false
+
+  /* 3. Penolakan tidak mengubah apa pun. */
+  const lagi = pengumpulanDosen(d.nip)
+    .filter((p) => statusPengumpulan(p).id === 'masuk')
+    .slice(0, 2)
+  const u2 = usulkanNilai({
+    dosen: d,
+    entri: lagi.map((p) => ({ nim: p.nim, komponenId: p.komponenId, nilai: 70 })),
+  })
+  putuskanUsulan(u2.id, 'ditolak', { aktor: 'Uji', catatan: 'perlu diperbaiki' })
+  hasil.tolakTidakMenulis = lagi.every((p) => nilaiTersimpan(p) === null)
+  hasil.statusJadiDitolak = lagi.every((p) => statusPengumpulan(p).id === 'ditolak')
+
+  /* 4. Sistem menahan baris yang melanggar aturan. */
+  const u3 = usulkanNilai({
+    dosen: d,
+    entri: [{ nim: '999999999', komponenId: antre[0].komponenId, nilai: 90 }],
+  })
+  try {
+    putuskanUsulan(u3.id, 'disetujui', { aktor: 'Uji' })
+    hasil.sistemMenahan = false
+  } catch {
+    hasil.sistemMenahan = true
+  }
+  hasil.tetapMenunggu = u3.status === 'menunggu'
+
   return hasil
 }
 

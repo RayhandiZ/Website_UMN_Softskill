@@ -58,6 +58,7 @@ import {
   useStore,
 } from '../../lib/store'
 import { useAuth } from '../../lib/auth'
+import { useTeks } from '../../lib/bahasa'
 
 const PAGE_SIZE = 10
 const SEMESTER_KOSONG = '— Pilih semester —'
@@ -111,6 +112,7 @@ async function terapkanStatus(batch, aktor, tandaBaris = {}) {
 }
 
 export default function Nilai() {
+  const t = useTeks()
   useStore() // ikut menghitung ulang setiap ada nilai yang tersimpan
 
   const { admin } = useAuth()
@@ -191,31 +193,32 @@ export default function Nilai() {
       {/* ---------------------- langkah 1: pilih semester ---------------------- */}
       <Card>
         <CardHeader
-          title="Langkah 1 — tentukan sasaran input"
-          subtitle="Semester wajib dipilih sebelum data bisa dimasukkan"
+          title={t('Pilih Yan Akan Di Input')}
+          subtitle={t('Semester wajib dipilih sebelum data bisa dimasukkan')}
           icon={IconPencil}
         />
         <div className="card-pad grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <div>
             <Select
-              label="Semester yang diisi"
+              label={t('Semester yang diisi')}
               value={semesterPilihan}
               onChange={setSemesterPilihan}
               options={[
                 SEMESTER_KOSONG,
                 ...Array.from({ length: CONFIG.TOTAL_SEMESTER_PROGRAM }, (_, i) => 'Semester ' + (i + 1)),
               ]}
+              tampilkan={t}
             />
             <p className="mt-1.5 text-[12px] text-ink-3">
               {semester
-                ? aspekSemester.length + ' aspek CPMK berada di semester ini'
-                : 'Belum dipilih'}
+                ? t('{n} aspek CPMK berada di semester ini', { n: aspekSemester.length })
+                : t('Belum dipilih')}
             </p>
           </div>
 
           <div>
             <Select
-              label="Sumber penilaian"
+              label={t('Sumber penilaian')}
               value={SUMBER[sumber].label}
               onChange={(v) => setSumber(SUMBER_LIST.find((s) => s.label === v).id)}
               options={SUMBER_LIST.map((s) => s.label)}
@@ -225,39 +228,45 @@ export default function Nilai() {
 
           <div>
             <Select
-              label="Angkatan"
+              label={t('Angkatan')}
               value={angkatan.label}
               onChange={(v) => setAngkatanId(COHORTS.find((c) => c.label === v).id)}
               options={COHORTS.map((c) => c.label)}
             />
             <p className="mt-1.5 text-[12px] text-ink-3">
-              Kini di Semester {angkatan.semesterAktif}
-              {semester ? ' · periode ' + labelPeriode(angkatan.periode[semester - 1]) : ''}
+              {t('Kini di Semester {n}', { n: angkatan.semesterAktif })}
+              {semester
+                ? ' · ' +
+                  t('periode {periode}', {
+                    periode: labelPeriode(angkatan.periode[semester - 1]),
+                  })
+                : ''}
             </p>
           </div>
 
           <div>
             <Select
-              label="Fakultas"
+              label={t('Fakultas')}
               value={faculty}
               onChange={(v) => {
                 setFaculty(v)
                 setProgram('Semua')
               }}
               options={['Semua', ...FACULTIES.map((f) => f.name)]}
+              tampilkan={t}
             />
             <p className="mt-1.5 text-[12px] text-ink-3">
               {program !== 'Semua'
-                ? 'mengikuti program studi'
+                ? t('mengikuti program studi')
                 : faculty === 'Semua'
-                  ? FACULTIES.length + ' fakultas'
-                  : programStudi(faculty).length + ' program studi'}
+                  ? t('{n} fakultas', { n: FACULTIES.length })
+                  : t('{n} program studi', { n: programStudi(faculty).length })}
             </p>
           </div>
 
           <div>
             <Select
-              label="Program studi"
+              label={t('Program studi')}
               value={program}
               onChange={(v) => {
                 setProgram(v)
@@ -267,10 +276,13 @@ export default function Nilai() {
                 if (v !== 'Semua') setFaculty(FAKULTAS_OF[v] ?? faculty)
               }}
               options={['Semua', ...programStudi(faculty)]}
+              tampilkan={t}
             />
             <p className="mt-1.5 text-[12px] text-ink-3">
-              {mahasiswa.length} mahasiswa
-              {program === 'Semua' ? ' pada pilihan ini' : ' · jenjang ' + (JENJANG_OF[program] ?? '\u2014')}
+              {t('{n} mahasiswa', { n: mahasiswa.length })}
+              {program === 'Semua'
+                ? ' ' + t('pada pilihan ini')
+                : ' · ' + t('jenjang {jenjang}', { jenjang: JENJANG_OF[program] ?? '-' })}
             </p>
           </div>
         </div>
@@ -283,10 +295,11 @@ export default function Nilai() {
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-soft text-brand-ink">
               <IconLock size={22} />
             </span>
-            <p className="mt-4 text-[16px] font-bold text-ink">Pilih semester terlebih dahulu</p>
+            <p className="mt-4 text-[16px] font-bold text-ink">
+              {t('Pilih semester terlebih dahulu')}
+            </p>
             <p className="mx-auto mt-2 max-w-md text-[13.5px] leading-relaxed text-ink-2">
-              Setiap aspek CPMK hanya dinilai pada satu semester tertentu. Tanpa memilih semester, sistem tidak
-              tahu komponen asesmen mana yang boleh diisi — dan nilai yang salah semester akan ditolak.
+              {t('Setiap aspek CPMK hanya dinilai pada satu semester tertentu. Tanpa memilih semester, sistem tidak tahu komponen asesmen mana yang boleh diisi, dan nilai yang salah semester akan ditolak.')}
             </p>
             <ul className="mx-auto mt-6 grid max-w-lg gap-2 text-left sm:grid-cols-3">
               {Array.from({ length: CONFIG.TOTAL_SEMESTER_PROGRAM }, (_, i) => i + 1).map((s) => (
@@ -296,9 +309,11 @@ export default function Nilai() {
                     onClick={() => setSemesterPilihan('Semester ' + s)}
                     className="w-full rounded-xl border border-line px-4 py-3 text-left transition hover:border-brand-ink hover:bg-surface-2"
                   >
-                    <span className="block text-[13.5px] font-bold text-ink">Semester {s}</span>
+                    <span className="block text-[13.5px] font-bold text-ink">
+                      {t('Semester {n}', { n: s })}
+                    </span>
                     <span className="mt-0.5 block text-[12px] text-ink-3">
-                      {getAspekSemester(s).length} aspek ·{' '}
+                      {t('{n} aspek', { n: getAspekSemester(s).length })} ·{' '}
                       {getAspekSemester(s)
                         .map((a) => a.kode.replace('.', '').replace('.', ''))
                         .join(', ')}
@@ -311,52 +326,65 @@ export default function Nilai() {
         </Card>
       ) : !komponenSumber.length ? (
         <Card>
-          <EmptyState title={'Tidak ada komponen ' + SUMBER[sumber].label + ' pada Semester ' + semester}>
-            Dokumen kurikulum memang belum mencantumkan komponen asesmen dari sumber ini untuk semester
-            tersebut. Pilih sumber lain, atau tambahkan komponennya lewat halaman{' '}
+          <EmptyState
+            title={t('Tidak ada komponen {unit} pada Semester {semester}', {
+              unit: SUMBER[sumber].label,
+              semester,
+            })}
+          >
+            {t('Dokumen kurikulum memang belum mencantumkan komponen asesmen dari sumber ini untuk semester tersebut. Pilih sumber lain, atau tambahkan komponennya lewat halaman')}{' '}
             <Link href="/admin/kurikulum" className="font-bold text-brand-ink hover:underline">
-              Kurikulum CPMK
+              {t('Kurikulum CPMK')}
             </Link>
             .
           </EmptyState>
         </Card>
       ) : !mahasiswa.length ? (
         <Card>
-          <EmptyState title={'Tidak ada mahasiswa pada pilihan ini'}>
-            Angkatan {angkatan.label}
-            {program !== 'Semua' ? ' program studi ' + program : ''}
-            {faculty !== 'Semua' && program === 'Semua' ? ' fakultas ' + faculty : ''} belum punya mahasiswa
-            terdaftar. Longgarkan pilihan fakultas atau program studi.
+          <EmptyState title={t('Tidak ada mahasiswa pada pilihan ini')}>
+            {t('Angkatan {label}', { label: angkatan.label })}
+            {program !== 'Semua' ? ' ' + t('program studi {prodi}', { prodi: program }) : ''}
+            {faculty !== 'Semua' && program === 'Semua'
+              ? ' ' + t('fakultas {fakultas}', { fakultas: faculty })
+              : ''}{' '}
+            {t('belum punya mahasiswa terdaftar. Longgarkan pilihan fakultas atau program studi.')}
           </EmptyState>
         </Card>
       ) : !angkatanSiap ? (
         <Card>
-          <EmptyState title={'Angkatan ' + angkatan.label + ' belum sampai Semester ' + semester}>
-            Angkatan ini baru menempuh Semester {angkatan.semesterAktif}. Nilai untuk Semester {semester} belum
-            boleh dimasukkan — bila dipaksakan lewat import, seluruh barisnya akan ditolak.
+          <EmptyState
+            title={t('Angkatan {label} belum sampai Semester {semester}', {
+              label: angkatan.label,
+              semester,
+            })}
+          >
+            {t('Angkatan ini baru menempuh Semester {aktif}. Nilai untuk Semester {semester} belum boleh dimasukkan; bila dipaksakan lewat import, seluruh barisnya akan ditolak.', {
+              aktif: angkatan.semesterAktif,
+              semester,
+            })}
           </EmptyState>
         </Card>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
             <StatTile
-              label="Aspek pada semester ini"
+              label={t('Aspek pada semester ini')}
               value={aspekBerkomponen.length}
               unit={'/ ' + aspekSemester.length}
               icon={IconPencil}
               hint={aspekBerkomponen.map((a) => a.kode).join(' ')}
             />
             <StatTile
-              label="Komponen dari sumber ini"
+              label={t('Komponen dari sumber ini')}
               value={komponenSumber.length}
               icon={IconUpload}
               hint={SUMBER[sumber].label}
             />
             <StatTile
-              label="Mahasiswa sasaran"
+              label={t('Mahasiswa sasaran')}
               value={mahasiswa.length}
               icon={IconCheck}
-              hint={'Angkatan ' + angkatan.label}
+              hint={t('Angkatan {label}', { label: angkatan.label })}
             />
           </div>
 
@@ -366,9 +394,9 @@ export default function Nilai() {
                 value={tab}
                 onChange={setTab}
                 items={[
-                  { value: 'manual', label: 'Input manual' },
-                  { value: 'import', label: 'Import CSV' },
-                  { value: 'koreksi', label: 'Pengajuan koreksi', count: koreksiMenunggu },
+                  { value: 'manual', label: t('Input manual') },
+                  { value: 'import', label: t('Import CSV') },
+                  { value: 'koreksi', label: t('Pengajuan koreksi'), count: koreksiMenunggu },
                 ]}
               />
             </div>
@@ -411,6 +439,7 @@ export default function Nilai() {
 /* Setelah nilai masuk, admin perlu tahu siapa saja yang terdampak — dan bahwa
    transkrip serta dashboard mahasiswanya sudah ikut terhitung ulang sendiri. */
 function HasilSimpan({ hasil }) {
+  const t = useTeks()
   const { batch, status } = hasil
   const mahasiswa = [...new Map(batch.jejak.map((j) => [j.nim, j])).values()]
 
@@ -418,26 +447,30 @@ function HasilSimpan({ hasil }) {
      sisanya mengikuti aturan sistem — karena tiap baris boleh bertanda sendiri.
      Karena itu keterangannya disusun dari hitungan, bukan dari satu pilihan. */
   const bagian = []
-  if (status.dikunci) bagian.push(status.dikunci + ' aspek dikunci sebagai final')
-  if (status.ditahan) bagian.push(status.ditahan + ' ditahan sebagai sementara')
-  if (status.otomatis) bagian.push(status.otomatis + ' mengikuti aturan sistem')
+  if (status.dikunci) bagian.push(t('{n} aspek dikunci sebagai final', { n: status.dikunci }))
+  if (status.ditahan) bagian.push(t('{n} ditahan sebagai sementara', { n: status.ditahan }))
+  if (status.otomatis) bagian.push(t('{n} mengikuti aturan sistem', { n: status.otomatis }))
 
   const catatanStatus =
-    (bagian.length ? bagian.join(', ') + '.' : 'Status aspek tidak diubah.') +
+    (bagian.length ? bagian.join(', ') + '.' : t('Status aspek tidak diubah.')) +
     (status.ditolakFinal
-      ? ' ' + status.ditolakFinal +
-        ' aspek diminta final tetapi komponennya belum lengkap, jadi tetap sementara.'
+      ? ' ' +
+        t('{n} aspek diminta final tetapi komponennya belum lengkap, jadi tetap sementara.', {
+          n: status.ditolakFinal,
+        })
       : '')
 
   return (
     <div className="rounded-xl border border-line bg-[color-mix(in_srgb,var(--good)_8%,transparent)] px-4 py-3.5">
       <p className="flex items-start gap-2 text-[13px] font-bold text-[var(--good)]">
         <IconCheck size={16} className="mt-px shrink-0" />
-        {batch.jumlah} nilai tersimpan sebagai batch {batch.id}.
+        {t('{n} nilai tersimpan sebagai batch {id}.', { n: batch.jumlah, id: batch.id })}
       </p>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-2">{catatanStatus}</p>
       <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">
-        Transkrip dan dashboard {mahasiswa.length} mahasiswa berikut sudah dihitung ulang tanpa tindakan tambahan.
+        {t('Transkrip dan dashboard {n} mahasiswa berikut sudah dihitung ulang tanpa tindakan tambahan.', {
+          n: mahasiswa.length,
+        })}
       </p>
       <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
         {mahasiswa.slice(0, 8).map((j) => {
@@ -454,7 +487,9 @@ function HasilSimpan({ hasil }) {
           )
         })}
         {mahasiswa.length > 8 ? (
-          <li className="text-[12.5px] text-ink-3">dan {mahasiswa.length - 8} mahasiswa lain</li>
+          <li className="text-[12.5px] text-ink-3">
+            {t('dan {n} mahasiswa lain', { n: mahasiswa.length - 8 })}
+          </li>
         ) : null}
       </ul>
     </div>
@@ -481,6 +516,7 @@ function HasilSimpan({ hasil }) {
    Hanya hidup bila barisnya memang diisi: menandai baris yang tidak ikut
    tersimpan tidak berpengaruh apa pun dan hanya menipu. */
 function TandaBaris({ nama, nilai, aktif, buka, onBuka, onPilih }) {
+  const teks = useTeks()
   const terpilih = TANDA_BARIS.find((t) => t.id === nilai)
   const tombolRef = useRef(null)
   const [posisi, setPosisi] = useState(null)
@@ -518,7 +554,7 @@ function TandaBaris({ nama, nilai, aktif, buka, onBuka, onPilih }) {
         onClick={onBuka}
         disabled={!aktif}
         aria-expanded={buka}
-        aria-label={'Tandai status untuk ' + nama}
+        aria-label={teks('Tandai status untuk {nama}', { nama })}
         className={
           'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12.5px] font-bold transition ' +
           (!aktif
@@ -529,7 +565,7 @@ function TandaBaris({ nama, nilai, aktif, buka, onBuka, onPilih }) {
         }
       >
         <IconPencil size={14} />
-        {terpilih ? terpilih.label : 'Tandai'}
+        {terpilih ? teks(terpilih.label) : teks('Tandai')}
       </button>
 
       {buka && aktif && posisi ? (
@@ -547,8 +583,10 @@ function TandaBaris({ nama, nilai, aktif, buka, onBuka, onPilih }) {
                 (t.id === nilai ? 'bg-brand-soft text-brand-ink' : 'text-ink hover:bg-surface-2')
               }
             >
-              {t.label}
-              <span className="block text-[11px] font-normal leading-snug text-ink-3">{t.ringkas}</span>
+              {teks(t.label)}
+              <span className="block text-[11px] font-normal leading-snug text-ink-3">
+                {teks(t.ringkas)}
+              </span>
             </button>
           ))}
         </div>
@@ -567,6 +605,7 @@ function InputManual({
   awalAspek = null,
   awalCari = '',
 }) {
+  const teks = useTeks()
   /* Aspek dan kotak pencarian ikut sasaran dari alamat URL bila ada. Aspek yang
      tidak ada pada kombinasi semester+sumber ini diabaikan, jangan sampai
      daftar komponennya kosong tanpa penjelasan. */
@@ -642,27 +681,30 @@ function InputManual({
   }
 
   if (!aspekId) {
-    return <EmptyState title="Tidak ada aspek yang bisa diisi dari sumber ini." />
+    return <EmptyState title={teks('Tidak ada aspek yang bisa diisi dari sumber ini.')} />
   }
 
   return (
     <div>
       <div className="grid gap-3 border-b border-line px-5 py-4 sm:grid-cols-2 sm:px-6">
         <Select
-          label="Aspek CPMK"
+          label={teks('Aspek CPMK')}
           value={aspekList.find((a) => a.id === aspekId)?.kode ?? ''}
           onChange={(v) => setAspekId(aspekList.find((a) => a.kode === v).id)}
           options={aspekList.map((a) => a.kode)}
         />
         <div>
-          <span className="mb-1.5 block label">Cari mahasiswa</span>
-          <SearchInput value={cari} onChange={setCari} placeholder="Nama atau NIM…" />
+          <span className="mb-1.5 block label">{teks('Cari mahasiswa')}</span>
+          <SearchInput value={cari} onChange={setCari} placeholder={teks('Nama atau NIM…')} />
         </div>
         <p className="text-[12.5px] leading-snug text-ink-2 sm:col-span-2">
-          {aspekList.find((a) => a.id === aspekId)?.nama} — {kolom.length} komponen dari{' '}
-          {SUMBER[sumber].label}. Kosongkan sel yang belum dinilai; sel kosong tidak dihitung sebagai nol. Baris
-          yang tidak ditandai mengikuti aturan sistem — aspeknya menjadi final sendiri begitu
-          seluruh komponennya terisi.
+          {aspekList.find((a) => a.id === aspekId)?.nama},{' '}
+          {teks('{n} komponen dari {unit}.', {
+            n: kolom.length,
+            unit: SUMBER[sumber].label,
+          })}{' '}
+          {teks('Kosongkan sel yang belum dinilai; sel kosong tidak dihitung sebagai nol.')}{' '}
+          {teks('Baris yang tidak ditandai mengikuti aturan sistem: aspeknya menjadi final sendiri begitu seluruh komponennya terisi.')}
         </p>
       </div>
 
@@ -677,7 +719,7 @@ function InputManual({
           <thead>
             <tr className="border-b border-line bg-surface-2">
               <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[.07em] text-ink-3">
-                Mahasiswa
+                {teks('Mahasiswa')}
               </th>
               {kolom.map((k) => (
                 <th
@@ -688,15 +730,15 @@ function InputManual({
                   <span className="mt-1 block font-mono text-[10px] text-ink-3">{k.id}</span>
                   {k.status === 'draft' ? (
                     <span className="mt-1 inline-block text-[10px] font-bold text-[var(--warning)]">
-                      skema belum final
+                      {teks('skema belum final')}
                     </span>
                   ) : null}
                 </th>
               ))}
               <th className="px-3 py-3 text-left text-[11px] font-bold uppercase tracking-[.07em] text-ink-3">
-                Tanda
+                {teks('Tanda')}
                 <span className="mt-1 block max-w-[150px] normal-case font-semibold leading-snug text-ink-3">
-                  sementara atau final
+                  {teks('sementara atau final')}
                 </span>
               </th>
             </tr>
@@ -739,7 +781,7 @@ function InputManual({
                         inputMode="numeric"
                         value={nilaiInput}
                         onChange={(e) => ubah(s.nim, k.id, e.target.value)}
-                        aria-label={s.name + ' — ' + k.label}
+                        aria-label={s.name + ', ' + k.label}
                         className={
                           'w-24 rounded-lg border px-2.5 py-1.5 text-[13.5px] font-semibold tabular-nums text-ink transition ' +
                           (buruk
@@ -751,7 +793,7 @@ function InputManual({
                       />
                       {buruk ? (
                         <span className="mt-1 block text-[11px] font-semibold text-[var(--critical)]">
-                          harus 0–100
+                          {teks('harus 0–100')}
                         </span>
                       ) : null}
                     </td>
@@ -784,7 +826,7 @@ function InputManual({
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">
         <div className="flex items-center gap-2">
           <button type="button" className="btn-ghost !px-3 !py-2 text-[13px]" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-            Sebelumnya
+            {teks('Sebelumnya')}
           </button>
           <Badge tone="neutral">
             {page} / {halaman}
@@ -795,28 +837,30 @@ function InputManual({
             disabled={page === halaman}
             onClick={() => setPage((p) => p + 1)}
           >
-            Berikutnya
+            {teks('Berikutnya')}
           </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {tidakSah.length ? (
             <span className="text-[12.5px] font-semibold text-[var(--critical)]">
-              {tidakSah.length} sel di luar rentang 0–100
+              {teks('{n} sel di luar rentang 0–100', { n: tidakSah.length })}
             </span>
           ) : null}
           <span className="text-[12.5px] text-ink-2">
-            {sah.length ? sah.length + ' nilai siap disimpan' : 'Belum ada perubahan'}
+            {sah.length
+              ? teks('{n} nilai siap disimpan', { n: sah.length })
+              : teks('Belum ada perubahan')}
           </span>
           <button type="button" className="btn-primary" disabled={!sah.length || tidakSah.length > 0} onClick={simpan}>
             <IconCheck size={17} />
-            Simpan nilai
+            {teks('Simpan nilai')}
           </button>
         </div>
       </div>
 
       <div className="px-5 pb-4 sm:px-6">
-        <CatatanKaki>{PERINGATAN_SESI}</CatatanKaki>
+        <CatatanKaki>{teks(PERINGATAN_SESI)}</CatatanKaki>
       </div>
     </div>
   )
@@ -828,6 +872,7 @@ const ABAIKAN = '— Abaikan kolom ini —'
 const labelKomponen = (k) => k.id + ' · ' + k.label
 
 function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, aktor, program }) {
+  const tr = useTeks()
   const [teks, setTeks] = useState('')
   const [analisa, setAnalisa] = useState(null)
   const [peta, setPeta] = useState({})
@@ -871,8 +916,10 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
   /* Mahasiswa di luar angkatan atau program studi yang sedang dipilih ditolak
      dengan alasan yang menyebut apa yang tidak cocok. */
   const batasSasaran = (m) => {
-    if (m.angkatanId !== angkatan.id) return 'Mahasiswa bukan angkatan ' + angkatan.label
-    if (program !== 'Semua' && m.program !== program) return 'Mahasiswa bukan dari program studi ' + program
+    if (m.angkatanId !== angkatan.id)
+      return tr('Mahasiswa bukan angkatan {label}', { label: angkatan.label })
+    if (program !== 'Semua' && m.program !== program)
+      return tr('Mahasiswa bukan dari program studi {prodi}', { prodi: program })
     return null
   }
 
@@ -885,7 +932,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
       const alasan = [...r.alasan]
       const komponen = r.komponenId ? getKomponenById(r.komponenId) : null
       if (komponen && !getAspekSemester(semester).some((a) => a.id === komponen.aspekId)) {
-        alasan.push('Komponen ini bukan milik Semester ' + semester)
+        alasan.push(tr('Komponen ini bukan milik Semester {n}', { n: semester }))
       }
       if (r.mahasiswa) {
         const tolak = batasSasaran(r.mahasiswa)
@@ -958,28 +1005,26 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
       {/* ------------------------------ unggah ------------------------------ */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-[15px] font-bold text-ink">Unggah rekap nilai</h3>
+          <h3 className="text-[15px] font-bold text-ink">{tr('Unggah rekap nilai')}</h3>
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink-2">
-            Berkas mentah dari dosen bisa langsung diunggah — sistem mengenali kolom NIM, menebak kolom mana
-            memetakan ke komponen asesmen mana, mendeteksi skala nilai, lalu mengisi dan menghitungnya
-            otomatis. Semua tebakan bisa Anda koreksi sebelum diproses.
+            {tr('Berkas mentah dari dosen bisa langsung diunggah: sistem mengenali kolom NIM, menebak kolom mana memetakan ke komponen asesmen mana, mendeteksi skala nilai, lalu mengisi dan menghitungnya otomatis. Semua tebakan bisa Anda koreksi sebelum diproses.')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-ghost !px-3 !py-2 text-[13px]" onClick={unduhContohMentah}>
             <IconDownload size={15} />
-            Contoh rekap mentah
+            {tr('Contoh rekap mentah')}
           </button>
           <button type="button" className="btn-ghost !px-3 !py-2 text-[13px]" onClick={unduhTemplateBaku}>
             <IconDownload size={15} />
-            Template baku
+            {tr('Template baku')}
           </button>
         </div>
       </div>
 
       <div className="grid gap-3">
         <label className="flex flex-wrap items-center gap-3">
-          <span className="text-[13px] font-bold text-ink">Berkas CSV</span>
+          <span className="text-[13px] font-bold text-ink">{tr('Berkas CSV')}</span>
           <input
             ref={berkasRef}
             type="file"
@@ -987,11 +1032,11 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
             onChange={bacaBerkas}
             className="text-[13px] text-ink-2 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-soft file:px-3 file:py-2 file:text-[13px] file:font-bold file:text-brand-ink"
           />
-          <span className="text-[12px] text-ink-3">langsung dianalisa setelah dipilih</span>
+          <span className="text-[12px] text-ink-3">{tr('langsung dianalisa setelah dipilih')}</span>
         </label>
 
         <label>
-          <span className="mb-1.5 block label">atau tempel isinya di sini</span>
+          <span className="mb-1.5 block label">{tr('atau tempel isinya di sini')}</span>
           <textarea
             value={teks}
             onChange={(e) => {
@@ -1008,7 +1053,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
         <div>
           <button type="button" className="btn-ghost" disabled={!teks.trim()} onClick={() => analisaSekarang()}>
             <IconInfo size={17} />
-            Analisa berkas
+            {tr('Analisa berkas')}
           </button>
         </div>
       </div>
@@ -1017,7 +1062,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
 
       {analisa?.kosong ? (
         <p className="rounded-xl border border-line px-4 py-3 text-[13px] text-ink-2">
-          Berkas tidak berisi baris data. Pastikan baris pertama adalah kepala kolom.
+          {tr('Berkas tidak berisi baris data. Pastikan baris pertama adalah kepala kolom.')}
         </p>
       ) : null}
 
@@ -1026,13 +1071,16 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
         <>
           <div className="grid gap-3 sm:grid-cols-4">
             {[
-              ['Format terbaca', 'Rekap mentah'],
-              ['Kolom NIM', analisa.kolomNim ?? 'tidak terdeteksi'],
+              ['Format terbaca', tr('Rekap mentah')],
+              ['Kolom NIM', analisa.kolomNim ?? tr('tidak terdeteksi')],
               ['Baris data', analisa.baris.length],
-              ['Kolom terpetakan', analisa.terpetakan + ' dari ' + analisa.kolomNumerik],
+              [
+                'Kolom terpetakan',
+                tr('{n} dari {total}', { n: analisa.terpetakan, total: analisa.kolomNumerik }),
+              ],
             ].map(([k, v]) => (
               <div key={k} className="rounded-xl border border-line px-3.5 py-3">
-                <p className="text-[11px] font-bold uppercase tracking-[.07em] text-ink-3">{k}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[.07em] text-ink-3">{tr(k)}</p>
                 <p className="mt-1 text-[14px] font-bold text-ink">{v}</p>
               </div>
             ))}
@@ -1041,7 +1089,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
           {!analisa.kolomNim ? (
             <p className="flex items-start gap-2 rounded-xl bg-[color-mix(in_srgb,var(--critical)_9%,transparent)] px-4 py-3 text-[13px] font-semibold text-[var(--critical)]">
               <IconAlert size={16} className="mt-px shrink-0" />
-              Kolom NIM tidak ditemukan. Beri nama kolom itu “NIM” atau “NPM”, lalu unggah ulang.
+              {tr('Kolom NIM tidak ditemukan. Beri nama kolom itu “NIM” atau “NPM”, lalu unggah ulang.')}
             </p>
           ) : null}
 
@@ -1049,10 +1097,10 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
           <div className="overflow-hidden rounded-xl border border-line">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-2 px-4 py-3">
               <p className="text-[12px] font-bold uppercase tracking-[.07em] text-ink-3">
-                Pemetaan kolom — periksa dan koreksi bila perlu
+                {tr('Pemetaan kolom, periksa dan koreksi bila perlu')}
               </p>
               <label className="flex items-center gap-2 text-[12.5px] text-ink-2">
-                Bila satu komponen menerima beberapa kolom:
+                {tr('Bila satu komponen menerima beberapa kolom:')}
                 <select
                   value={agregasi}
                   onChange={(e) => setAgregasi(e.target.value)}
@@ -1073,7 +1121,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
                   <tr className="border-b border-line">
                     {['Kolom di berkas', 'Contoh isi', 'Skala', 'Dipetakan ke komponen', 'Keyakinan'].map((h) => (
                       <th key={h} className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-[.07em] text-ink-3">
-                        {h}
+                        {tr(h)}
                       </th>
                     ))}
                   </tr>
@@ -1163,10 +1211,10 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
                 <Badge tone="good" icon={IconCheck}>
-                  {hasilMentah.entri.length} nilai akan diisi
+                  {tr('{n} nilai akan diisi', { n: hasilMentah.entri.length })}
                 </Badge>
                 <Badge tone={hasilMentah.ditolak.length ? 'critical' : 'neutral'} icon={IconX}>
-                  {hasilMentah.ditolak.length} baris ditolak
+                  {tr('{n} baris ditolak', { n: hasilMentah.ditolak.length })}
                 </Badge>
                 {hasilMentah.perKomponen.map((p) => (
                   <span key={p.komponen.id} className="text-[12px] text-ink-2">
@@ -1178,7 +1226,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
               {hasilMentah.entri.length ? (
                 <div className="overflow-hidden rounded-xl border border-line">
                   <p className="border-b border-line bg-surface-2 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[.07em] text-ink-3">
-                    Pratinjau hasil perhitungan
+                    {tr('Pratinjau hasil perhitungan')}
                   </p>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[680px] border-collapse">
@@ -1192,7 +1240,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
                                 (i === 4 ? 'text-right' : 'text-left')
                               }
                             >
-                              {h}
+                              {tr(h)}
                             </th>
                           ))}
                         </tr>
@@ -1227,15 +1275,15 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
               {hasilMentah.ditolak.length ? (
                 <div className="overflow-hidden rounded-xl border border-line">
                   <p className="border-b border-line bg-surface-2 px-4 py-2.5 text-[12px] font-bold uppercase tracking-[.07em] text-ink-3">
-                    Baris ditolak
+                    {tr('Baris ditolak')}
                   </p>
                   <ul className="divide-y divide-line">
                     {hasilMentah.ditolak.slice(0, 8).map((r, i) => (
                       <li key={i} className="flex flex-wrap items-start gap-3 px-4 py-2.5">
                         <span className="w-16 shrink-0 text-[12px] font-bold tabular-nums text-ink-3">
-                          baris {r.nomor}
+                          {tr('baris {n}', { n: r.nomor })}
                         </span>
-                        <span className="min-w-[140px] font-mono text-[12px] text-ink-2">{r.nim || '—'}</span>
+                        <span className="min-w-[140px] font-mono text-[12px] text-ink-2">{r.nim || '-'}</span>
                         <span className="flex-1 text-[12.5px] font-semibold text-[var(--critical)]">
                           {r.alasan.join(' · ')}
                         </span>
@@ -1253,7 +1301,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
       {adaAnalisa && analisa.format === 'baku' && hasilBaku ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge tone="neutral">Format baku terdeteksi</Badge>
+            <Badge tone="neutral">{tr('Format baku terdeteksi')}</Badge>
             <Badge tone="good" icon={IconCheck}>
               {hasilBaku.diterima.length} baris siap diproses
             </Badge>
@@ -1283,7 +1331,7 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" className="btn-primary" disabled={!entriSiap.length} onClick={proses}>
             <IconUpload size={17} />
-            Isi otomatis {entriSiap.length} nilai
+            {tr('Isi otomatis {n} nilai', { n: entriSiap.length })}
           </button>
           <span className="text-[12.5px] text-ink-2">
             {analisa.format === 'mentah' ? hasilMentah?.ringkas : null}
@@ -1292,10 +1340,8 @@ function ImportCerdas({ semester, sumber, angkatan, komponenSumber, mahasiswa, a
       ) : null}
 
       <CatatanKaki>
-        Konversi skala dan penggabungan kolom hanya mengubah cara nilai dibaca dari berkas — perhitungan aspek,
-        cluster, dan nilai akhir tetap memakai bobot di Kurikulum CPMK. Baris ditolak bila NIM tak dikenal,
-        komponen dari sumber atau semester lain, mahasiswa di luar angkatan sasaran, atau nilai melebihi skala
-        yang dipilih. {PERINGATAN_SESI}
+        {tr('Konversi skala dan penggabungan kolom hanya mengubah cara nilai dibaca dari berkas; perhitungan aspek, cluster, dan nilai akhir tetap memakai bobot di Kurikulum CPMK. Baris ditolak bila NIM tak dikenal, komponen dari sumber atau semester lain, mahasiswa di luar angkatan sasaran, atau nilai melebihi skala yang dipilih.')}{' '}
+        {tr(PERINGATAN_SESI)}
       </CatatanKaki>
     </div>
   )
@@ -1315,7 +1361,9 @@ function namaKolomMentah(k) {
 /* ============================ pengajuan koreksi =========================== */
 
 function Koreksi({ aktor }) {
+  const t = useTeks()
   const [catatan, setCatatan] = useState({})
+  const [galat, setGalat] = useState('')
 
   /* putuskanKoreksi berjalan SERENTAK dan mengembalikan boolean, bukan Promise.
      Memanggil .catch() di atasnya justru yang membuat tombol ini gagal —
@@ -1327,32 +1375,46 @@ function Koreksi({ aktor }) {
         catatan: catatan[id]?.trim() || null,
       })
       if (!berhasil) {
-        window.alert('Pengajuan tidak ditemukan. Mungkin sudah diputuskan di jendela lain.')
+        setGalat(t('Pengajuan tidak ditemukan. Mungkin sudah diputuskan di jendela lain.'))
+        return
       }
+      setGalat('')
     } catch (e) {
-      window.alert(e.message)
+      setGalat(e.message)
     }
   }
 
   if (!PENGAJUAN_KOREKSI.length) {
-    return <EmptyState title="Belum ada pengajuan koreksi dari mahasiswa." />
+    return <EmptyState title={t('Belum ada pengajuan koreksi dari mahasiswa.')} />
   }
 
   return (
     <ul className="divide-y divide-line">
+      {galat ? (
+        <li className="px-5 pt-4 sm:px-6">
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-xl bg-[color-mix(in_srgb,var(--critical)_10%,transparent)] px-3.5 py-3 text-[13px] font-semibold text-[var(--critical)]"
+          >
+            <IconAlert size={16} className="mt-px shrink-0" />
+            {galat}
+          </p>
+        </li>
+      ) : null}
       {PENGAJUAN_KOREKSI.map((k) => (
         <li key={k.id} className="px-5 py-4 sm:px-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-[240px] flex-1">
               <p className="text-[14px] font-bold text-ink">{k.komponenLabel}</p>
               <p className="mt-1 text-[12.5px] text-ink-2">
-                {k.nama} · {k.nim} · aspek {k.aspekId} · diajukan {k.diajukan}
+                {k.nama} · {k.nim} · {t('aspek {kode}', { kode: k.aspekId })} ·{' '}
+                {t('diajukan {tanggal}', { tanggal: k.diajukan })}
               </p>
               <p className="mt-2 max-w-2xl rounded-lg bg-surface-2 px-3.5 py-2.5 text-[13px] leading-relaxed text-ink-2">
                 “{k.alasan}”
                 {k.nilaiDiharapkan != null ? (
                   <span className="mt-1 block text-[12.5px] font-semibold text-ink-3">
-                    Nilai yang diharapkan: {k.nilaiDiharapkan}
+                    {t('Nilai yang diharapkan')}: {k.nilaiDiharapkan}
                   </span>
                 ) : null}
               </p>
@@ -1361,19 +1423,25 @@ function Koreksi({ aktor }) {
               tone={k.status === 'disetujui' ? 'good' : k.status === 'ditolak' ? 'critical' : 'warning'}
               icon={k.status === 'disetujui' ? IconCheck : k.status === 'ditolak' ? IconX : IconAlert}
             >
-              {k.status === 'menunggu' ? 'Menunggu' : k.status === 'disetujui' ? 'Disetujui' : 'Ditolak'}
+              {t(
+                k.status === 'menunggu'
+                  ? 'Menunggu'
+                  : k.status === 'disetujui'
+                    ? 'Disetujui'
+                    : 'Ditolak',
+              )}
             </Badge>
           </div>
 
           {k.status === 'menunggu' ? (
             <div className="mt-3 flex flex-wrap items-end gap-2.5">
               <label className="min-w-[240px] flex-1">
-                <span className="mb-1.5 block label">Catatan keputusan</span>
+                <span className="mb-1.5 block label">{t('Catatan keputusan')}</span>
                 <input
                   className="field !py-2.5"
                   value={catatan[k.id] ?? ''}
                   onChange={(e) => setCatatan((c) => ({ ...c, [k.id]: e.target.value }))}
-                  placeholder="Alasan menyetujui atau menolak…"
+                  placeholder={t('Alasan menyetujui atau menolak…')}
                 />
               </label>
               <button
@@ -1382,17 +1450,17 @@ function Koreksi({ aktor }) {
                 className="inline-flex items-center gap-1.5 rounded-xl border border-line px-3.5 py-2.5 text-[13px] font-bold text-ink-2 transition hover:border-[var(--critical)] hover:text-[var(--critical)]"
               >
                 <IconX size={15} />
-                Tolak
+                {t('Tolak')}
               </button>
               <button type="button" className="btn-primary !py-2.5" onClick={() => putuskan(k.id, 'disetujui')}>
                 <IconCheck size={15} />
-                Setujui
+                {t('Setujui')}
               </button>
             </div>
           ) : k.keputusan ? (
             <p className="mt-2 text-[12.5px] text-ink-3">
               {k.keputusan.oleh} · {k.keputusan.tanggal}
-              {k.keputusan.catatan ? ' — ' + k.keputusan.catatan : ''}
+              {k.keputusan.catatan ? '. ' + k.keputusan.catatan : ''}
             </p>
           ) : null}
         </li>
@@ -1404,33 +1472,50 @@ function Koreksi({ aktor }) {
 /* ============================== riwayat batch ============================= */
 
 function RiwayatBatch() {
+  const t = useTeks()
+  const [galat, setGalat] = useState('')
   return (
     <Card>
       <CardHeader
-        title="Riwayat batch"
-        subtitle="Batch yang Anda buat bisa dibatalkan; batch periode lalu hanya tercatat"
+        title={t('Riwayat batch')}
+        subtitle={t('Batch yang Anda buat bisa dibatalkan; batch periode lalu hanya tercatat')}
         icon={IconUndo}
         action={
           BATCH_SESI.length ? (
             <button
               type="button"
               onClick={() => {
-                if (window.confirm('Hapus seluruh perubahan nilai dan kembali ke data contoh bawaan?')) {
+                if (
+                  window.confirm(
+                    t('Hapus seluruh perubahan nilai dan kembali ke data contoh bawaan?'),
+                  )
+                ) {
                   try {
                     bersihkanPerubahan()
+                    setGalat('')
                   } catch (e) {
-                    window.alert(e.message)
+                    setGalat(e.message)
                   }
                 }
               }}
               className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-bold text-ink-2 transition hover:border-[var(--critical)] hover:text-[var(--critical)]"
             >
               <IconUndo size={14} />
-              Kembalikan data contoh
+              {t('Kembalikan data contoh')}
             </button>
           ) : null
         }
       />
+
+      {galat ? (
+        <p
+          role="alert"
+          className="mx-5 mt-4 flex items-start gap-2 rounded-xl bg-[color-mix(in_srgb,var(--critical)_10%,transparent)] px-3.5 py-3 text-[13px] font-semibold text-[var(--critical)] sm:mx-6"
+        >
+          <IconAlert size={16} className="mt-px shrink-0" />
+          {galat}
+        </p>
+      ) : null}
 
       {BATCH_SESI.length ? (
         <ul className="divide-y divide-line">
@@ -1438,12 +1523,14 @@ function RiwayatBatch() {
             <li key={b.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5 sm:px-6">
               <span className="font-mono text-[12.5px] font-bold text-ink">{b.id}</span>
               <span className="min-w-[200px] flex-1 text-[13px] text-ink-2">
-                {SUMBER[b.sumber].label} · Semester {b.semester} · angkatan {b.angkatanId} ·{' '}
-                {b.cara === 'manual' ? 'input manual' : 'import CSV'} · {b.jumlah} nilai
+                {SUMBER[b.sumber].label} · {t('Semester {n}', { n: b.semester })} ·{' '}
+                {t('angkatan {id}', { id: b.angkatanId })} ·{' '}
+                {t(b.cara === 'manual' ? 'input manual' : 'import CSV')} ·{' '}
+                {t('{n} nilai', { n: b.jumlah })}
               </span>
               <span className="text-[12.5px] tabular-nums text-ink-3">{b.waktu}</span>
               {b.status === 'dibatalkan' ? (
-                <Badge tone="neutral">Dibatalkan</Badge>
+                <Badge tone="neutral">{t('Dibatalkan')}</Badge>
               ) : (
                 <button
                   type="button"
@@ -1452,41 +1539,43 @@ function RiwayatBatch() {
                        bukan Promise. */
                     try {
                       if (!rollbackBatch(b.id)) {
-                        window.alert('Batch ini sudah dibatalkan sebelumnya.')
+                        setGalat(t('Batch ini sudah dibatalkan sebelumnya.'))
+                        return
                       }
+                      setGalat('')
                     } catch (e) {
-                      window.alert(e.message)
+                      setGalat(e.message)
                     }
                   }}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[12.5px] font-bold text-ink-2 transition hover:border-[var(--critical)] hover:text-[var(--critical)]"
                 >
                   <IconUndo size={14} />
-                  Rollback
+                  {t('Rollback')}
                 </button>
               )}
             </li>
           ))}
         </ul>
       ) : (
-        <EmptyState title="Belum ada batch perubahan">
-          Setiap penyimpanan — baik lewat input manual maupun import — dicatat sebagai satu batch yang bisa
-          dibatalkan sekaligus, dan bertahan setelah halaman dimuat ulang.
+        <EmptyState title={t('Belum ada batch perubahan')}>
+          {t('Setiap penyimpanan, baik lewat input manual maupun import, dicatat sebagai satu batch yang bisa dibatalkan sekaligus, dan bertahan setelah halaman dimuat ulang.')}
         </EmptyState>
       )}
 
       <div className="border-t border-line">
         <p className="px-5 pt-4 text-[12px] font-bold uppercase tracking-[.07em] text-ink-3 sm:px-6">
-          Batch periode sebelumnya
+          {t('Batch periode sebelumnya')}
         </p>
         <ul className="divide-y divide-line">
           {BATCH_IMPORT.map((b) => (
             <li key={b.id} className="flex flex-wrap items-center gap-3 px-5 py-3 sm:px-6">
               <span className="font-mono text-[12.5px] text-ink-2">{b.id}</span>
               <span className="min-w-[200px] flex-1 text-[12.5px] text-ink-3">
-                {SUMBER[b.sumber].label} · {b.periode} · {b.baris} baris · {b.ditolak} ditolak
+                {SUMBER[b.sumber].label} · {b.periode} · {t('{n} baris', { n: b.baris })} ·{' '}
+                {t('{n} ditolak', { n: b.ditolak })}
               </span>
               <span className="text-[12px] tabular-nums text-ink-3">{b.waktu}</span>
-              <Badge tone="neutral">{b.status}</Badge>
+              <Badge tone="neutral">{t(b.status)}</Badge>
             </li>
           ))}
         </ul>

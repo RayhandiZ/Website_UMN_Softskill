@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { roleFromEmail, useAuth } from '../lib/auth'
+import { LABEL_PERAN, panelUntuk, roleFromEmail, useAuth } from '../lib/auth'
 import { IconAlert, IconLogo } from '../components/Icons'
+import { useTeks } from '../lib/bahasa'
+import TombolBahasa from '../components/TombolBahasa'
 import { AREA } from '../lib/curriculum'
 
 // const DEMO = [
@@ -11,6 +13,7 @@ import { AREA } from '../lib/curriculum'
 
 export default function Login() {
   const { user, login } = useAuth()
+  const t = useTeks()
   const router = useRouter()
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
@@ -20,7 +23,7 @@ export default function Login() {
   /* Sudah masuk? Lempar ke panelnya. Perpindahan rute harus terjadi di dalam
      efek — memanggil router selagi merender akan ditolak React. */
   useEffect(() => {
-    if (user) router.replace(user.role === 'admin' ? '/admin' : '/mahasiswa')
+    if (user) router.replace(panelUntuk(user.role))
   }, [user, router])
 
   if (user) return null
@@ -33,7 +36,7 @@ export default function Login() {
     setBusy(true)
     try {
       const next = await login(form)
-      router.replace(next.role === 'admin' ? '/admin' : '/mahasiswa')
+      router.replace(panelUntuk(next.role))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -57,20 +60,21 @@ export default function Login() {
         <div className="flex items-center gap-3">
           <IconLogo size={34} />
           <span className="text-lg font-extrabold tracking-tight">
-            SOFTSKILL <span className="text-[var(--accent)]">5C</span>
+            UMN <span className="text-[var(--accent)]">SOFTSKILL</span>
           </span>
         </div>
 
         <div className="my-auto max-w-lg">
           <p className="text-[20px] font-bold uppercase tracking-[.16em] text-[var(--accent)]">
-            Dashboard Monitoring
+            {t('Dashboard Monitoring')}
           </p>
           <h1 className="mt-4 text-[35px] font-extrabold leading-[1.1] tracking-tight">
-            Capaian softskill mahasiswa, terukur setiap semester.
+            {t('Capaian softskill mahasiswa, terukur setiap semester.')}
           </h1>
           <p className="mt-5 text-[15px] leading-relaxed text-white/70">
-            Tiga area pengembangan, sepuluh aspek CPMK, dinilai lewat PDP, mata kuliah humaniora, dan program
-            kampus sepanjang Semester 1 sampai 3.
+            {t(
+              'Tiga area pengembangan, sepuluh aspek CPMK, dinilai lewat PDP, mata kuliah humaniora, dan program kampus sepanjang Semester 1 sampai 3.',
+            )}
           </p>
 
           <ul className="mt-9 space-y-3">
@@ -83,8 +87,8 @@ export default function Login() {
                   {a.id}
                 </span>
                 <div>
-                  <p className="text-[14.5px] font-bold">{a.nama}</p>
-                  <p className="text-[12.5px] text-white/55">{a.ringkas}</p>
+                  <p className="text-[14.5px] font-bold">{t(a.nama)}</p>
+                  <p className="text-[12.5px] text-white/55">{t(a.ringkas)}</p>
                 </div>
               </li>
             ))}
@@ -99,20 +103,29 @@ export default function Login() {
       {/* Panel kanan — formulir */}
       <main className="flex items-center justify-center bg-bg px-5 py-12 sm:px-10">
         <div className="w-full max-w-[400px] animate-rise">
-          <div className="mb-8 flex items-center gap-2.5 text-brand-ink lg:hidden">
-            <IconLogo size={28} />
-            <span className="text-[15px] font-extrabold tracking-tight text-ink">SOFTSKILL 5C</span>
+          {/* Pemilih bahasa harus ada di halaman ini juga: kalau baru muncul
+              setelah masuk, orang yang tidak membaca bahasa Indonesia tidak
+              punya cara melewati gerbang pertamanya. */}
+          <div className="mb-6 flex justify-end">
+            <TombolBahasa nada="terang" />
           </div>
 
-          <h2 className="text-[26px] font-extrabold tracking-tight text-ink">Masuk ke dashboard</h2>
+          <div className="mb-8 flex items-center gap-2.5 text-brand-ink lg:hidden">
+            <IconLogo size={28} />
+            <span className="text-[15px] font-extrabold tracking-tight text-ink">UMN SOFTSKILL</span>
+          </div>
+
+          <h2 className="text-[26px] font-extrabold tracking-tight text-ink">
+            {t('Masuk ke dashboard')}
+          </h2>
           <p className="mt-2 text-[14px] text-ink-2">
-            Gunakan akun kampus Anda. Peran ditentukan otomatis dari domain email.
+            {t('Gunakan akun kampus Anda. Peran ditentukan otomatis dari domain email.')}
           </p>
 
           <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
             <div>
               <label htmlFor="email" className="mb-2 block text-[13px] font-bold text-ink">
-                Email
+                {t('Email')}
               </label>
               <input
                 id="email"
@@ -125,9 +138,9 @@ export default function Login() {
               />
               {detected ? (
                 <p className="mt-2 text-[12.5px] font-semibold text-ink-3">
-                  Terdeteksi sebagai{' '}
+                  {t('Terdeteksi sebagai')}{' '}
                   <span className="text-brand-ink">
-                    {detected === 'student' ? 'Mahasiswa' : 'Admin'}
+                    {t(LABEL_PERAN[detected] ?? 'Admin')}
                   </span>
                 </p>
               ) : null}
@@ -135,12 +148,10 @@ export default function Login() {
 
             <div>
               <div className="mb-2 flex items-baseline justify-between">
-                <label htmlFor="password" className="text-[13px] font-bold text-ink">
-                  Password
+                <label htmlFor="password" className="mb-2 block text-[13px] font-bold text-ink">
+                  {t('Kata sandi')}
                 </label>
-                <button type="button" className="text-[12.5px] font-semibold text-brand-ink hover:underline">
-                  Forgot Password?
-                </button>
+
               </div>
               <div className="relative">
                 <input
@@ -157,11 +168,17 @@ export default function Login() {
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-1.5 text-[12px] font-bold text-ink-3 transition hover:bg-surface-2 hover:text-ink-2"
                 >
-                  {showPassword ? 'Sembunyi' : 'Show'}
+                  {t(showPassword ? 'Sembunyikan' : 'Tampilkan')}
+                </button>
+              </div>
+              
+              <div className="mt-2 flex justify-end">
+                <button type="button" className="text-[12.5px] font-semibold text-brand-ink hover:underline">
+                  {t('Lupa kata sandi?')}
                 </button>
               </div>
             </div>
-
+              
             {error ? (
               <p
                 role="alert"
@@ -173,7 +190,7 @@ export default function Login() {
             ) : null}
 
             <button type="submit" className="btn-primary w-full py-3.5" disabled={busy}>
-              {busy ? 'Memverifikasi…' : 'Masuk'}
+              {t(busy ? 'Memverifikasi…' : 'Masuk')}
             </button>
           </form>
 

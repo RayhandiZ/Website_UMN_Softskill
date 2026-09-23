@@ -1,6 +1,7 @@
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
 import ChartFrame from './ChartFrame'
 import { RUBRIK } from '../../lib/scoring'
+import { useTeks } from '../../lib/bahasa'
 
 /* --------------------------------------------------------------------------
    Sebaran huruf mutu — satu-satunya grafik di halaman Ringkasan.
@@ -30,6 +31,7 @@ function Keterangan({ active, payload, total }) {
 }
 
 export default function MutuDonut({ huruf, totalMahasiswa, height = 260 }) {
+  const t = useTeks()
   const data = [
     ...RUBRIK.map((r) => ({
       kunci: r.huruf,
@@ -42,7 +44,7 @@ export default function MutuDonut({ huruf, totalMahasiswa, height = 260 }) {
     {
       kunci: 'belum',
       judul: 'Belum Memenuhi',
-      rincian: 'Bukan huruf mutu — capaian di bawah 60',
+      rincian: 'Bukan huruf mutu, capaian di bawah 60',
       rentang: '0–59',
       jumlah: huruf.belum ?? 0,
       warna: 'var(--critical)',
@@ -59,7 +61,9 @@ export default function MutuDonut({ huruf, totalMahasiswa, height = 260 }) {
   return (
     <ChartFrame
       title="Grafik Sebaran Aspek"
-      subtitle={'Dari ' + total.toLocaleString('id-ID') + ' mahasiswa yang sudah punya nilai'}
+      subtitle={t('Dari {n} mahasiswa yang sudah punya nilai', {
+        n: total.toLocaleString('id-ID'),
+      })}
       height={height}
       table={{
         head: ['Huruf mutu', 'Rentang nilai', 'Mahasiswa', 'Bagian'],

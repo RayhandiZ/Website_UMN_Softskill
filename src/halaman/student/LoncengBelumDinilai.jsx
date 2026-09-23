@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { IconBell, IconChevronRight, IconInfo } from '../../components/Icons'
 import { SUMBER } from '../../lib/curriculum'
+import { useTeks } from '../../lib/bahasa'
 
 /* --------------------------------------------------------------------------
    Lonceng "Belum dinilai" di bilah atas panel mahasiswa.
@@ -28,6 +29,7 @@ export const belumDinilai = (t) =>
     .map((a) => ({ aspek: a.aspek, komponen: a.komponenKosong }))
 
 export default function LoncengBelumDinilai({ t }) {
+  const teks = useTeks()
   const [buka, setBuka] = useState(false)
   const ref = useRef(null)
 
@@ -56,7 +58,7 @@ export default function LoncengBelumDinilai({ t }) {
         type="button"
         onClick={() => setBuka((v) => !v)}
         aria-expanded={buka}
-        aria-label={jumlah + ' komponen belum dinilai'}
+        aria-label={teks('{n} komponen belum dinilai', { n: jumlah })}
         className="relative grid h-10 w-10 place-items-center rounded-2xl border border-line bg-surface text-ink-2 transition hover:text-ink"
       >
         <IconBell size={19} />
@@ -71,16 +73,18 @@ export default function LoncengBelumDinilai({ t }) {
            keluar layar di sisi kiri. */
         <div
           role="dialog"
-          aria-label="Komponen belum dinilai"
+          aria-label={teks('Komponen belum dinilai')}
           className="fixed inset-x-4 top-[76px] z-50 overflow-hidden rounded-2xl border border-line bg-surface shadow-pop animate-rise sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+10px)] sm:w-[380px]"
         >
           <div className="border-b border-line px-4 py-3.5">
             <p className="flex items-baseline justify-between gap-3">
-              <span className="text-[15px] font-bold text-ink">Belum dinilai</span>
-              <span className="text-[13px] font-semibold text-ink-2">{jumlah} komponen</span>
+              <span className="text-[15px] font-bold text-ink">{teks('Belum dinilai')}</span>
+              <span className="text-[13px] font-semibold text-ink-2">
+                {teks('{n} komponen', { n: jumlah })}
+              </span>
             </p>
             <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
-              Menunggu konfirmasi lebih lanjut kepada dosen terkait.
+              {teks('Menunggu konfirmasi lebih lanjut kepada dosen terkait.')}
             </p>
           </div>
 
@@ -98,7 +102,7 @@ export default function LoncengBelumDinilai({ t }) {
                     <li key={k.id} className="text-[13.5px] leading-snug text-ink">
                       {k.label}
                       <span className="block text-[12.5px] text-ink-3">
-                        dari {SUMBER[k.sumber]?.label ?? k.sumber}
+                        {teks('dari {sumber}', { sumber: SUMBER[k.sumber]?.label ?? k.sumber })}
                       </span>
                     </li>
                   ))}
@@ -110,14 +114,14 @@ export default function LoncengBelumDinilai({ t }) {
           <div className="border-t border-line bg-surface-2 px-4 py-3">
             <p className="flex items-start gap-1.5 text-[12.5px] leading-snug text-ink-3">
               <IconInfo size={13} className="mt-px shrink-0" />
-              Nilai akan diunggah dosen pengampu atau unit kemahasiswaan pada akhir periode ujian.
+              {teks('Nilai akan diunggah dosen pengampu atau unit kemahasiswaan pada akhir periode ujian.')}
             </p>
             <Link
               href="/mahasiswa/transkrip"
               onClick={() => setBuka(false)}
               className="mt-2.5 inline-flex items-center gap-1 text-[13.5px] font-bold text-brand-ink hover:underline"
             >
-              Lihat di transkrip
+              {teks('Lihat di transkrip')}
               <IconChevronRight size={15} />
             </Link>
           </div>

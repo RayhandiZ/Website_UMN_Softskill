@@ -291,7 +291,7 @@ export function hitungEntri(analisa, peta, { agregasi = 'rata', cariMahasiswa, b
           nomor,
           nim: nimMentah,
           nama: mahasiswa.name,
-          alasan: ['Kolom "' + kol.nama + '" bernilai ' + mentah + ' — di luar skala ' + skala],
+          alasan: ['Kolom "' + kol.nama + '" bernilai ' + mentah + ', di luar skala ' + skala],
         })
         continue
       }

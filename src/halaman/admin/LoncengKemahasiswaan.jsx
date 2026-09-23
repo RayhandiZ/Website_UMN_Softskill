@@ -6,6 +6,7 @@ import {
   IconAlert,
   IconBell,
   IconCertificate,
+  IconCheckShield,
   IconChevronRight,
   IconInfo,
   IconPencil,
@@ -19,7 +20,8 @@ import {
   perluDitinjau,
 } from '../../lib/mockData'
 import { CONFIG } from '../../lib/config'
-import { useStore } from '../../lib/store'
+import { useStore, usulanMenunggu } from '../../lib/store'
+import { useTeks } from '../../lib/bahasa'
 
 /* --------------------------------------------------------------------------
    Lonceng panel Kemahasiswaan — pasangan dari lonceng panel mahasiswa.
@@ -90,12 +92,18 @@ function Baris({ href, onPilih, ikon: Ikon, judul, rinci, jumlah }) {
 }
 
 export default function LoncengKemahasiswaan() {
+  const t = useTeks()
   // Ikut berubah begitu ada nilai yang tersimpan atau koreksi yang diputuskan.
   useStore()
   const [buka, setBuka] = useState(false)
   const ref = useRef(null)
 
   const koreksi = PENGAJUAN_KOREKSI.filter((k) => k.status === 'menunggu')
+  /* Usulan nilai dari dosen. Diletakkan paling atas di panel ini karena
+     inilah satu-satunya antrean yang MENAHAN pekerjaan orang lain: selama
+     belum diputuskan, nilai yang sudah dikerjakan dosen tidak sampai ke
+     mahasiswa mana pun. */
+  const usulan = usulanMenunggu()
   const pekerjaan = useMemo(() => pekerjaanPenilaian(), [])
 
   /* Dua keputusan yang dulu berdiri sendiri sebagai kartu "Requires Review" di
@@ -107,21 +115,22 @@ export default function LoncengKemahasiswaan() {
       id: 'ambang',
       href: '/admin/mahasiswa',
       ikon: IconAlert,
-      judul: tinjau.dibawahAmbang + ' mahasiswa belum berhak atas sertifikat',
-      rinci:
-        'Sudah sampai Semester ' + CONFIG.TOTAL_SEMESTER_PROGRAM + ', nilainya masih di bawah ' +
-        CONFIG.AMBANG_SERTIFIKAT,
+      judul: t('{n} mahasiswa belum berhak atas sertifikat', { n: tinjau.dibawahAmbang }),
+      rinci: t('Sudah sampai Semester {semester}, nilainya masih di bawah {ambang}', {
+        semester: CONFIG.TOTAL_SEMESTER_PROGRAM,
+        ambang: CONFIG.AMBANG_SERTIFIKAT,
+      }),
     },
     tinjau.siapDikunci > 0 && {
       id: 'kunci',
       href: '/admin/angkatan',
       ikon: IconCertificate,
-      judul: tinjau.siapDikunci + ' angkatan siap dikunci',
-      rinci: 'Tiga semester sudah tuntas — sertifikatnya bisa diterbitkan',
+      judul: t('{n} angkatan siap dikunci', { n: tinjau.siapDikunci }),
+      rinci: t('Tiga semester sudah tuntas, sertifikatnya bisa diterbitkan'),
     },
   ].filter(Boolean)
 
-  const jumlah = koreksi.length + pekerjaan.length + tinjauan.length
+  const jumlah = usulan.length + koreksi.length + pekerjaan.length + tinjauan.length
 
   useEffect(() => {
     if (!buka) return
@@ -147,7 +156,7 @@ export default function LoncengKemahasiswaan() {
         type="button"
         onClick={() => setBuka((v) => !v)}
         aria-expanded={buka}
-        aria-label={jumlah + ' hal menunggu ditangani'}
+        aria-label={t('{n} hal menunggu ditangani', { n: jumlah })}
         className="relative grid h-9 w-9 place-items-center rounded-lg text-white/80 transition hover:bg-white/10 hover:text-white"
       >
         <IconBell size={19} />
@@ -162,24 +171,51 @@ export default function LoncengKemahasiswaan() {
            keluar layar di sisi kiri. */
         <div
           role="dialog"
-          aria-label="Pekerjaan yang menunggu"
+          aria-label={t('Pekerjaan yang menunggu')}
           className="fixed inset-x-4 top-[72px] z-50 overflow-hidden rounded-2xl border border-line bg-surface text-left shadow-pop animate-rise sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+10px)] sm:w-[420px]"
         >
-          <div className="border-b border-line px-4 py-3.5">
-            <p className="flex items-baseline justify-between gap-3">
+          {/* <div className="border-b border-line px-4 py-3.5"> */}
+            {/* <p className="flex items-baseline justify-between gap-3">
               <span className="text-[15px] font-bold text-ink">Perlu ditangani</span>
               <span className="text-[13px] font-semibold text-ink-2">{jumlah} hal</span>
-            </p>
-            <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
+            </p> */}
+            {/* <p className="mt-1 text-[13px] leading-relaxed text-ink-2">
               Pilih satu — halaman input terbuka dengan sasarannya sudah terisi.
-            </p>
-          </div>
+            </p> */}
+          {/* </div> */}
 
           <div className="max-h-[min(55vh,460px)] overflow-y-auto px-2 py-2">
+            {usulan.length ? (
+              <section className="border-b border-line pb-2">
+                <h3 className="px-2 pb-1 pt-2 text-[11.5px] font-bold uppercase tracking-[.06em] text-ink-3">
+                  {t('Usulan nilai dosen')}
+                </h3>
+                <ul>
+                  {usulan.map((u) => (
+                    <Baris
+                      key={u.id}
+                      href="/admin/usulan"
+                      onPilih={tutup}
+                      ikon={IconCheckShield}
+                      judul={u.dosenNama}
+                      rinci={
+                        (SUMBER[u.sumber]?.label ?? u.sumber) +
+                        ' · ' +
+                        t('Semester {n}', { n: u.semester }) +
+                        ' · ' +
+                        t('menunggu persetujuan')
+                      }
+                      jumlah={u.entri.length.toLocaleString('id-ID')}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
             {koreksi.length ? (
               <section className="border-b border-line pb-2">
                 <h3 className="px-2 pb-1 pt-2 text-[11.5px] font-bold uppercase tracking-[.06em] text-ink-3">
-                  Pengajuan koreksi
+                  {t('Pengajuan koreksi')}
                 </h3>
                 <ul>
                   {koreksi.map((k) => (
@@ -199,7 +235,7 @@ export default function LoncengKemahasiswaan() {
             {tinjauan.length ? (
               <section className="border-b border-line pb-2">
                 <h3 className="px-2 pb-1 pt-2 text-[11.5px] font-bold uppercase tracking-[.06em] text-ink-3">
-                  Perlu ditinjau
+                  {t('Perlu ditinjau')}
                 </h3>
                 <ul>
                   {tinjauan.map((t) => (
@@ -218,7 +254,7 @@ export default function LoncengKemahasiswaan() {
 
             <section>
               <h3 className="px-2 pb-1 pt-2 text-[11.5px] font-bold uppercase tracking-[.06em] text-ink-3">
-                Belum dinilai
+                {t('Belum dinilai')}
               </h3>
               <ul>
                 {pekerjaan.map((p) => (
@@ -234,10 +270,15 @@ export default function LoncengKemahasiswaan() {
                     onPilih={tutup}
                     ikon={IconPencil}
                     judul={
-                      'Semester ' + p.semester + ' · ' + (SUMBER[p.sumber]?.label ?? p.sumber)
+                      t('Semester {n}', { n: p.semester }) +
+                      ' · ' +
+                      (SUMBER[p.sumber]?.label ?? p.sumber)
                     }
                     rinci={
-                      'Angkatan ' + p.angkatan.label + ' · ' + p.mahasiswa + ' mahasiswa · ' +
+                      t('Angkatan {label}', { label: p.angkatan.label }) +
+                      ', ' +
+                      t('{n} mahasiswa', { n: p.mahasiswa }) +
+                      ' · ' +
                       p.aspek.map((a) => a.kode).join(' ')
                     }
                     jumlah={p.kosong.toLocaleString('id-ID')}
@@ -250,7 +291,7 @@ export default function LoncengKemahasiswaan() {
           <div className="border-t border-line bg-surface-2 px-4 py-3">
             <p className="flex items-start gap-1.5 text-[12.5px] leading-snug text-ink-3">
               <IconInfo size={13} className="mt-px shrink-0" />
-              Angka di kanan adalah banyaknya nilai komponen yang masih kosong pada kelompok itu.
+              {t('Angka di kanan adalah banyaknya nilai komponen yang masih kosong pada kelompok itu.')}
             </p>
           </div>
         </div>

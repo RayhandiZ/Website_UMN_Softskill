@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../lib/auth'
+import { LABEL_PERAN, panelUntuk, useAuth } from '../lib/auth'
+import { useTeks } from '../lib/bahasa'
 import { Avatar } from './Ui'
 import { IconChevronDown, IconChevronRight, IconLogout, IconUsers } from './Icons'
 
@@ -18,13 +19,14 @@ import { IconChevronDown, IconChevronRight, IconLogout, IconUsers } from './Icon
 
 export default function MenuAkun({ foto = null, tone = 'onbrand', rinci = null }) {
   const { user, logout } = useAuth()
+  const t = useTeks()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
   /* Profil tinggal di dalam panel masing-masing supaya kerangka yang
      membungkusnya tetap sesuai peran. */
-  const profilKe = user?.role === 'admin' ? '/admin/profil' : '/mahasiswa/profil'
+  const profilKe = panelUntuk(user?.role) + '/profil'
   const terang = tone === 'terang'
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export default function MenuAkun({ foto = null, tone = 'onbrand', rinci = null }
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-label="Menu akun"
+        aria-label={t('Menu akun')}
         className={
           'flex items-center gap-2.5 rounded-2xl py-1 pl-1 pr-2 transition ' +
           (terang ? 'hover:bg-surface-2' : 'hover:bg-white/10')
@@ -79,7 +81,7 @@ export default function MenuAkun({ foto = null, tone = 'onbrand', rinci = null }
             <p className="truncate text-sm font-bold text-ink">{user?.name}</p>
             <p className="truncate text-[12.5px] text-ink-2">{user?.email}</p>
             <p className="mt-1.5 inline-flex rounded-md bg-brand-soft px-2 py-0.5 text-[11px] font-bold text-brand-ink">
-              {user?.role === 'admin' ? 'Kemahasiswaan' : 'Mahasiswa'}
+              {t(LABEL_PERAN[user?.role] ?? 'Pengguna')}
             </p>
           </div>
           <Link
@@ -88,7 +90,7 @@ export default function MenuAkun({ foto = null, tone = 'onbrand', rinci = null }
             className="flex w-full items-center gap-2.5 border-b border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-2"
           >
             <IconUsers size={17} className="text-ink-2" />
-            Profil
+            {t('Profil')}
             <IconChevronRight size={16} className="ml-auto text-ink-3" />
           </Link>
           <button
@@ -100,7 +102,7 @@ export default function MenuAkun({ foto = null, tone = 'onbrand', rinci = null }
             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--critical)] transition hover:bg-surface-2"
           >
             <IconLogout size={17} />
-            Keluar
+            {t('Keluar')}
           </button>
         </div>
       ) : null}

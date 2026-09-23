@@ -34,13 +34,26 @@ export function aspekBolehDilihat(student, aspekId) {
 /* ---- R3 — nilai akhir tidak pernah diekstrapolasi ------------------------- */
 
 /** Label wajib yang menyertai setiap nilai akhir. */
+/* Kalimatnya dikembalikan sebagai TEMPLAT berpenanda, bukan kalimat jadi.
+   Dengan begitu satu kalimat yang sama bisa diterjemahkan tanpa memecahnya
+   menjadi potongan-potongan yang tata bahasanya rusak di bahasa lain. */
 export function labelNilaiAkhir(akhir) {
   if (akhir.status === 'final') {
-    return { teks: 'Final', rinci: 'Seluruh ' + akhir.aspekTotal + ' aspek sudah dinilai dan dikunci.' }
+    return {
+      teks: 'Final',
+      rinci: 'Seluruh {total} aspek sudah dinilai dan dikunci.',
+      nilai: { total: akhir.aspekTotal },
+    }
   }
   return {
     teks: 'Sementara',
-    rinci: 'Nilai sementara ' + akhir.basis + '. Nilai final terbit setelah Semester ' + CONFIG.TOTAL_SEMESTER_PROGRAM + '.',
+    rinci:
+      'Nilai sementara berdasarkan {n} dari {total} aspek. Nilai final terbit setelah Semester {semester}.',
+    nilai: {
+      n: akhir.aspekDinilai,
+      total: akhir.aspekTotal,
+      semester: CONFIG.TOTAL_SEMESTER_PROGRAM,
+    },
   }
 }
 
@@ -142,7 +155,7 @@ export function kelayakanSertifikat(student) {
   const sisa = klausa.length - 2
   const alasanRingkas = layak
     ? null
-    : 'Belum tersedia — ' +
+    : 'Belum tersedia. ' +
       klausa.slice(0, 2).join(' dan ') +
       (sisa > 0 ? ' (dan ' + sisa + ' syarat lain)' : '') +
       '.'
@@ -271,4 +284,23 @@ export function buatPengajuanKoreksi({ student, komponenId, alasan, nilaiDiharap
     diajukan: new Date().toISOString().slice(0, 10),
     keputusan: null,
   }
+}
+
+/* ---- Pemeriksaan sistem atas usulan nilai dosen --------------------------- */
+
+/**
+ * "Perlu dikonfirmasi oleh sistem" — dan inilah pemeriksaannya.
+ *
+ * Sengaja memanggil validasiBatchImport, bukan menulis aturan sendiri. Lahirnya
+ * jalur masuk baru adalah cara paling umum sebuah aturan bocor: R1 dijaga ketat
+ * di jalur import, lalu jalur usulan dosen diam-diam melewatinya karena
+ * pemeriksaannya ditulis ulang seadanya. Satu validator untuk semua pintu.
+ *
+ * `entri` berbentuk { nim, komponenId, nilai } — bentuk yang dipakai store.
+ */
+export function periksaUsulan(entri, { cariMahasiswa, sumber }) {
+  return validasiBatchImport(
+    (entri ?? []).map((e) => ({ nim: e.nim, komponen: e.komponenId, nilai: e.nilai })),
+    { cariMahasiswa, sumber },
+  )
 }

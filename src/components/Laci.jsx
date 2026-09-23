@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { IconLogo, IconX } from './Icons'
+import { useTeks } from '../lib/bahasa'
 
 /* --------------------------------------------------------------------------
    Laci navigasi untuk layar kecil — dipakai panel Kemahasiswaan dan panel
@@ -19,6 +20,7 @@ import { IconLogo, IconX } from './Icons'
  */
 export default function Laci({ buka, onTutup, label = 'Menu navigasi', nada = 'terang', children }) {
   const gelap = nada === 'gelap'
+  const t = useTeks()
 
   const panelRef = useRef(null)
 
@@ -49,7 +51,7 @@ export default function Laci({ buka, onTutup, label = 'Menu navigasi', nada = 't
     <div className="fixed inset-0 z-50 print:hidden">
       <button
         type="button"
-        aria-label="Tutup menu navigasi"
+        aria-label={t('Tutup menu navigasi')}
         onClick={() => tutupRef.current()}
         className="absolute inset-0 h-full w-full cursor-default bg-black/45 animate-pudar"
       />
@@ -58,7 +60,7 @@ export default function Laci({ buka, onTutup, label = 'Menu navigasi', nada = 't
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label={label}
+        aria-label={t(label)}
         tabIndex={-1}
         className={
           'absolute inset-y-0 left-0 flex w-[84%] max-w-[320px] flex-col shadow-pop outline-none animate-geser ' +
@@ -80,7 +82,7 @@ export default function Laci({ buka, onTutup, label = 'Menu navigasi', nada = 't
           <button
             type="button"
             onClick={() => tutupRef.current()}
-            aria-label="Tutup menu navigasi"
+            aria-label={t('Tutup menu navigasi')}
             className="-mr-1 grid h-9 w-9 place-items-center rounded-lg text-white transition hover:bg-white/10"
           >
             <IconX size={20} />

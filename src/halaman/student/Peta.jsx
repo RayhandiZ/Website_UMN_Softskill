@@ -7,6 +7,7 @@ import { SUMBER, SUMBER_LIST, getCluster } from '../../lib/curriculum'
 import { transkripOf } from '../../lib/mockData'
 import { useStore } from '../../lib/store'
 import { useStudent } from './StudentLayout'
+import { useTeks } from '../../lib/bahasa'
 
 /* --------------------------------------------------------------------------
    Road Map — perjalanan tiga semester program softskill.
@@ -39,11 +40,12 @@ const RINGKAS_KEADAAN = {
 /* Status satu aspek dalam kalimat pendek — ikon saja tidak cukup untuk
    membedakan status, jadi labelnya selalu ikut. */
 function StatusSingkat({ a }) {
+  const t = useTeks()
   if (a.status === 'final') {
     return (
       <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--good)]">
         <IconCheck size={13} />
-        Final
+        {t('Final')}
       </span>
     )
   }
@@ -51,13 +53,14 @@ function StatusSingkat({ a }) {
   return (
     <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-ink-2">
       <IconClock size={13} />
-      {a.status === 'menunggu' ? 'Belum dinilai' : 'Sementara'}
+      {t(a.status === 'menunggu' ? 'Belum dinilai' : 'Sementara')}
     </span>
   )
 }
 
 /* Satu jalur kegiatan (PDP / MK Humaniora / Kemahasiswaan) dalam satu semester. */
 function Jalur({ sumber, nama, kegiatan, terkunci }) {
+  const t = useTeks()
   const dinilai = kegiatan.filter((x) => x.k.terisi).length
 
   return (
@@ -69,7 +72,7 @@ function Jalur({ sumber, nama, kegiatan, terkunci }) {
         </div>
         {kegiatan.length && !terkunci ? (
           <p className="text-[12.5px] font-semibold text-ink-2">
-            {dinilai} dari {kegiatan.length} dinilai
+            {t('{n} dari {total} dinilai', { n: dinilai, total: kegiatan.length })}
           </p>
         ) : null}
       </header>
@@ -100,7 +103,7 @@ function Jalur({ sumber, nama, kegiatan, terkunci }) {
                 {terkunci ? null : k.terisi ? (
                   <span className="font-extrabold text-ink">{k.nilai}</span>
                 ) : (
-                  <span className="font-semibold text-ink-3">belum masuk</span>
+                  <span className="font-semibold text-ink-3">{t('belum masuk')}</span>
                 )}
               </span>
             </li>
@@ -108,7 +111,7 @@ function Jalur({ sumber, nama, kegiatan, terkunci }) {
         </ul>
       ) : (
         <p className="px-4 py-3 text-[13.5px] text-ink-2">
-          Program ini dijalani, tetapi tidak menghasilkan komponen nilai.
+          {t('Program ini dijalani, tetapi tidak menghasilkan komponen nilai.')}
         </p>
       )}
     </section>
@@ -117,6 +120,7 @@ function Jalur({ sumber, nama, kegiatan, terkunci }) {
 
 /* Satu titik pada garis waktu beserta kartunya. */
 function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
+  const t = useTeks()
   const keadaan = keadaanOf(s)
   const terkunci = keadaan === 'terkunci'
   const idIsi = 'semester-' + s.semester
@@ -133,10 +137,13 @@ function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
   const semuaFinal = aspek.length > 0 && aspek.every((a) => a.status === 'final')
   const keterangan =
     keadaan === 'selesai'
-      ? s.total + ' aspek' + (semuaFinal ? ' · semua final' : '')
+      ? t('{total} aspek', { total: s.total }) + (semuaFinal ? ' · ' + t('semua final') : '')
       : keadaan === 'berjalan'
-        ? s.dinilai + ' dari ' + s.total + ' aspek dinilai'
-        : s.total + ' aspek · dibuka pada Semester ' + s.semester
+        ? t('{n} dari {total} aspek dinilai', { n: s.dinilai, total: s.total })
+        : t('{total} aspek · dibuka pada Semester {semester}', {
+            total: s.total,
+            semester: s.semester,
+          })
 
   return (
     <li className="relative pb-5 pl-12 last:pb-0 sm:pl-14">
@@ -181,13 +188,17 @@ function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
         >
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-2">
-              <span className="text-[17px] font-extrabold text-ink">Semester {s.semester}</span>
+              <span className="text-[17px] font-extrabold text-ink">
+                {t('Semester {n}', { n: s.semester })}
+              </span>
               {keadaan === 'berjalan' ? (
                 <span className="rounded-full bg-brand px-2.5 py-0.5 text-[11.5px] font-bold text-white">
-                  Anda di sini
+                  {t('Anda di sini')}
                 </span>
               ) : (
-                <span className="text-[13px] font-semibold text-ink-2">{RINGKAS_KEADAAN[keadaan]}</span>
+                <span className="text-[13px] font-semibold text-ink-2">
+                  {t(RINGKAS_KEADAAN[keadaan])}
+                </span>
               )}
             </span>
             <span className="mt-0.5 block text-[13.5px] text-ink-2">{keterangan}</span>
@@ -197,8 +208,8 @@ function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
             <IconLock size={18} className="shrink-0 text-ink-3" />
           ) : (
             <span className="shrink-0 text-right">
-              <span className="block text-[22px] font-extrabold leading-none text-ink">{s.nilai ?? '—'}</span>
-              <span className="mt-1 block text-[11.5px] text-ink-3">nilai semester</span>
+              <span className="block text-[22px] font-extrabold leading-none text-ink">{s.nilai ?? '-'}</span>
+              <span className="mt-1 block text-[11.5px] text-ink-3">{t('nilai semester')}</span>
             </span>
           )}
 
@@ -212,14 +223,16 @@ function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
           <div id={idIsi} className="space-y-5 border-t border-line px-5 py-5 sm:px-6">
             {terkunci ? (
               <p className="text-[14px] leading-relaxed text-ink-2">
-                Semester ini belum dibuka. Berikut kegiatan yang akan Anda jalani — nilainya baru
-                muncul setelah Semester {s.semester} dimulai dan penilai mengunggahnya.
+                {t(
+                  'Semester ini belum dibuka. Berikut kegiatan yang akan Anda jalani. Nilainya baru muncul setelah Semester {n} dimulai dan penilai mengunggahnya.',
+                  { n: s.semester },
+                )}
               </p>
             ) : null}
 
             {/* aspek yang dibentuk semester ini */}
             <section>
-              <h3 className="text-[14px] font-bold text-ink">Aspek yang dibentuk</h3>
+              <h3 className="text-[14px] font-bold text-ink">{t('Aspek yang dibentuk')}</h3>
               <ul className="mt-2.5 grid gap-2 sm:grid-cols-2">
                 {aspek.map((a) => (
                   <li key={a.aspekId} className="flex items-center gap-3 rounded-2xl bg-surface-2 px-3.5 py-2.5">
@@ -233,7 +246,7 @@ function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
                     <span className="shrink-0 text-right">
                       {a.terkunci ? null : (
                         <span className="block text-[16px] font-extrabold leading-tight text-ink">
-                          {a.nilai ?? '—'}
+                          {a.nilai ?? '-'}
                         </span>
                       )}
                       <StatusSingkat a={a} />
@@ -246,7 +259,13 @@ function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
             {/* kegiatan per jalur */}
             <section>
               <h3 className="text-[14px] font-bold text-ink">
-                {terkunci ? 'Kegiatan yang akan dijalani' : keadaan === 'selesai' ? 'Kegiatan yang sudah dijalani' : 'Kegiatan semester ini'}
+                {t(
+                  terkunci
+                    ? 'Kegiatan yang akan dijalani'
+                    : keadaan === 'selesai'
+                      ? 'Kegiatan yang sudah dijalani'
+                      : 'Kegiatan semester ini',
+                )}
               </h3>
               <div className="mt-2.5 space-y-3">
                 {jalur.map((j) => (
@@ -260,7 +279,7 @@ function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
                 href="/mahasiswa/transkrip"
                 className="inline-flex items-center gap-1.5 text-[14px] font-bold text-brand-ink hover:underline"
               >
-                Lihat rincian bobot di transkrip
+                {t('Lihat rincian bobot di transkrip')}
                 <IconChevronRight size={16} />
               </Link>
             ) : null}
@@ -274,6 +293,7 @@ function Semester({ s, aspek, terbuka, onToggle, terakhir }) {
 export default function Peta() {
   // Ikut menghitung ulang begitu ada nilai yang masuk dari panel Kemahasiswaan.
   useStore()
+  const teks = useTeks()
   const student = useStudent()
   const t = transkripOf(student)
   const daftar = Object.values(t.semester)
@@ -291,15 +311,20 @@ export default function Peta() {
     <div className="space-y-6">
       <header className="pt-2">
         <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-ink sm:text-[28px]">
-          Road Map
+          {teks('Peta Perjalanan')}
         </h1>
         <p className="mt-1.5 text-[15px] leading-relaxed text-ink-2">
           {berjalan
-            ? 'Anda sedang menjalani Semester ' + berjalan.semester + ' dari ' + CONFIG.TOTAL_SEMESTER_PROGRAM + '.'
+            ? teks('Anda sedang menjalani Semester {n} dari {total}.', {
+                n: berjalan.semester,
+                total: CONFIG.TOTAL_SEMESTER_PROGRAM,
+              })
             : semuaSelesai
-              ? 'Seluruh ' + CONFIG.TOTAL_SEMESTER_PROGRAM + ' semester program sudah Anda selesaikan.'
-              : 'Program Anda belum dimulai.'}{' '}
-          Ketuk satu semester untuk melihat kegiatan dan nilainya.
+              ? teks('Seluruh {total} semester program sudah Anda selesaikan.', {
+                  total: CONFIG.TOTAL_SEMESTER_PROGRAM,
+                })
+              : teks('Program Anda belum dimulai.')}{' '}
+          {teks('Ketuk satu semester untuk melihat kegiatan dan nilainya.')}
         </p>
       </header>
 
@@ -317,9 +342,12 @@ export default function Peta() {
       </ol>
 
       <p className="max-w-4xl text-[13px] leading-relaxed text-ink-3">
-        Tiap semester dijalani lewat tiga jalur: modul {SUMBER.PDP.nama}, {SUMBER.MK.nama}, dan program{' '}
-        {SUMBER.ENGAGEMENT.label}. Kode kecil di samping tiap kegiatan menunjukkan aspek mana yang
-        menerima nilainya.
+        {teks('Tiap semester dijalani lewat tiga jalur: modul {pdp}, {mk}, dan program {eng}.', {
+          pdp: SUMBER.PDP.nama,
+          mk: SUMBER.MK.nama,
+          eng: SUMBER.ENGAGEMENT.label,
+        })}{' '}
+        {teks('Kode kecil di samping tiap kegiatan menunjukkan aspek mana yang menerima nilainya.')}
       </p>
     </div>
   )

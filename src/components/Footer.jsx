@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { IconChat, IconLogo, IconMail, IconPhone } from './Icons'
+import { useTeks } from '../lib/bahasa'
+import { KONTAK_UMN } from '../lib/layanan'
+import { IconLogo, IconMail, IconPhone } from './Icons'
 
 /* --------------------------------------------------------------------------
    Footer mengikuti susunan E-Learning UMN: pintasan berikon di kiri, alamat
@@ -16,13 +18,16 @@ import { IconChat, IconLogo, IconMail, IconPhone } from './Icons'
       helpdesk E-Learning — menyalinnya akan menyesatkan orang yang menghubungi.
    -------------------------------------------------------------------------- */
 
+/* Nomor dan alamatnya datang dari lib/layanan.js, tempat yang sama yang
+   dipakai tombol layanan mengambang. Dua salinan nomor telepon adalah cara
+   paling pasti untuk suatu hari punya dua nomor yang berbeda. */
 const KONTAK = [
-  { icon: IconPhone, teks: '(021) 5422 0808 ext. 3902', href: 'tel:+62215422 0808' },
-  { icon: IconMail, teks: 'softskill@umn.ac.id', href: 'mailto:softskill@umn.ac.id' },
-  // { icon: IconChat, teks: '0811-1000-5C (pesan saja)', href: null },
+  { icon: IconPhone, teks: KONTAK_UMN.telepon.tampil, href: KONTAK_UMN.telepon.tautan },
+  { icon: IconMail, teks: KONTAK_UMN.surel.tampil, href: KONTAK_UMN.surel.tautan },
 ]
 
 function Pintasan({ ke, label, icon: Icon }) {
+  const t = useTeks()
   return (
     <li>
       <Link
@@ -30,19 +35,20 @@ function Pintasan({ ke, label, icon: Icon }) {
         className="flex w-[84px] flex-col items-center gap-2 rounded-xl px-2 py-3 text-center transition hover:bg-white/10"
       >
         <Icon size={30} />
-        <span className="text-[12.5px] font-semibold leading-tight">{label}</span>
+        <span className="text-[12.5px] font-semibold leading-tight">{t(label)}</span>
       </Link>
     </li>
   )
 }
 
 export default function Footer({ pintasan = [] }) {
+  const t = useTeks()
   return (
     <footer className="mt-12 bg-brand text-white print:hidden">
       <div className="mx-auto grid max-w-shell gap-x-10 gap-y-9 px-5 py-10 sm:px-6 lg:grid-cols-[auto_1fr_auto_auto]">
         {pintasan.length ? (
           <section>
-            <h2 className="text-[13.5px] font-bold">Short Cuts</h2>
+            <h2 className="text-[13.5px] font-bold">{t('Pintasan')}</h2>
             <ul className="mt-3 flex flex-wrap gap-1">
               {pintasan.map((p) => (
                 <Pintasan key={p.ke} {...p} />
@@ -52,13 +58,13 @@ export default function Footer({ pintasan = [] }) {
         ) : null}
 
         <section>
-          <h2 className="text-[13.5px] font-bold">Helpdesk</h2>
+          <h2 className="text-[13.5px] font-bold">{t('Helpdesk')}</h2>
           <address className="mt-3 space-y-1 text-[13.5px] not-italic leading-relaxed text-white/80">
             <p>Gedung B, Lantai 3 Ruang B315</p>
             <p>Jl. Scientia Boulevard, Gading Serpong,</p>
             <p>kel. Curug Sangereng, Kec. Kelapa Dua,</p>
             <p>Kab. Tangerang, Prop. Banten 15811, Indonesia</p>
-            <p className="pt-1">Senin–Jumat, 08.00–17.00 WIB</p>
+            <p className="pt-1">{t('Senin sampai Jumat, 08.00 hingga 17.00 WIB')}</p>
           </address>
         </section>
 
@@ -87,7 +93,7 @@ export default function Footer({ pintasan = [] }) {
             </span>
           </div>
           <p className="mt-3 max-w-[220px] text-[13px] leading-relaxed text-white/70">
-            Biro Kemahasiswaan &amp; Humaniora
+            {t('Biro Kemahasiswaan & Humaniora')}
             <br />
             Universitas Multimedia Nusantara
           </p>
@@ -95,7 +101,7 @@ export default function Footer({ pintasan = [] }) {
       </div>
 
       <div className="border-t border-white/15 py-4 text-center text-[13px] text-white/70">
-        © Universitas Multimedia Nusantara. By Rayhandi Zulmi
+        © Universitas Multimedia Nusantara. Design by Rayhandi Zulmi
       </div>
     </footer>
   )

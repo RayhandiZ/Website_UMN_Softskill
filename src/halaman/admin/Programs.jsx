@@ -4,9 +4,11 @@ import { Card, CatatanKaki, EmptyState, HurufBadge, ScoreBar, StatTile, Tabs } f
 import { IconBuilding, IconDownload, IconGauge, IconUsers } from '../../components/Icons'
 import { FACULTIES, byAngkatan, byProgram, filterStudents, ringkas } from '../../lib/mockData'
 import { susunCSV, unduhBerkas } from '../../lib/csv'
+import { useTeks } from '../../lib/bahasa'
 import { useStore } from '../../lib/store'
 
 export default function Programs() {
+  const t = useTeks()
   // Ikut menghitung ulang begitu ada nilai yang masuk dari panel Kemahasiswaan.
   useStore()
   const [filter, setFilter] = useState(DEFAULT_FILTER)
@@ -38,8 +40,8 @@ export default function Programs() {
           }))
         : angkatan.map((a) => ({
             kunci: a.angkatan.id,
-            judul: 'Angkatan ' + a.angkatan.label,
-            sub: 'Semester ' + a.angkatan.semesterAktif + ' · ' + a.angkatan.status,
+            judul: t('Angkatan {label}', { label: a.angkatan.label }),
+            sub: t('Semester {n}', { n: a.angkatan.semesterAktif }) + ' · ' + a.angkatan.status,
             ...a,
           }))
 
@@ -59,14 +61,16 @@ export default function Programs() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-extrabold tracking-tight text-ink">Capaian per unit</h1>
+          <h1 className="text-[22px] font-extrabold tracking-tight text-ink">
+            {t('Capaian per unit')}
+          </h1>
           <p className="mt-1.5 text-[14px] text-ink-2">
-            Bandingkan capaian CPMK antar program studi, fakultas, dan angkatan.
+            {t('Bandingkan capaian CPMK antar program studi, fakultas, dan angkatan.')}
           </p>
         </div>
         <button type="button" className="btn-ghost" onClick={unduhRekap} disabled={!daftar.length}>
           <IconDownload size={17} />
-          Unduh rekap
+          {t('Unduh rekap')}
         </button>
       </div>
 
@@ -74,28 +78,42 @@ export default function Programs() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatTile
-          label="Unit terpantau"
+          label={t('Unit terpantau')}
           value={programs.length}
           icon={IconBuilding}
-          hint="Program studi pada filter aktif"
+          hint={t('Program studi pada filter aktif')}
         />
-        <StatTile label="Rata-rata gabungan" value={r.rata ?? '—'} unit="/ 100" icon={IconGauge} />
-        <StatTile label="Transkrip final" value={r.final} icon={IconUsers} hint={r.total + ' mahasiswa'} />
+        <StatTile
+          label={t('Rata-rata gabungan')}
+          value={r.rata ?? '-'}
+          unit="/ 100"
+          icon={IconGauge}
+        />
+        <StatTile
+          label={t('Transkrip final')}
+          value={r.final}
+          icon={IconUsers}
+          hint={t('{n} mahasiswa', { n: r.total })}
+        />
       </div>
 
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
           <div>
-            <h2 className="text-[15px] font-bold leading-tight text-ink">Tabel perbandingan</h2>
-            <p className="mt-1 text-[13px] text-ink-2">Pilih satuan analisis lewat tab di sebelah kanan</p>
+            <h2 className="text-[15px] font-bold leading-tight text-ink">
+              {t('Tabel perbandingan')}
+            </h2>
+            <p className="mt-1 text-[13px] text-ink-2">
+              {t('Pilih satuan analisis lewat tab di sebelah kanan')}
+            </p>
           </div>
           <Tabs
             value={tampilan}
             onChange={setTampilan}
             items={[
-              { value: 'prodi', label: 'Program studi', count: programs.length },
-              { value: 'fakultas', label: 'Fakultas', count: fakultas.length },
-              { value: 'angkatan', label: 'Angkatan', count: angkatan.length },
+              { value: 'prodi', label: t('Program studi'), count: programs.length },
+              { value: 'fakultas', label: t('Fakultas'), count: fakultas.length },
+              { value: 'angkatan', label: t('Angkatan'), count: angkatan.length },
             ]}
           />
         </div>
@@ -107,7 +125,8 @@ export default function Programs() {
                 <div className="min-w-[220px] flex-1">
                   <p className="text-[14.5px] font-bold text-ink">{d.judul}</p>
                   <p className="mt-0.5 text-[12.5px] text-ink-3">
-                    {d.sub} · {d.total} mahasiswa · {d.final} transkrip final
+                    {d.sub} · {t('{n} mahasiswa', { n: d.total })} ·{' '}
+                    {t('{n} transkrip final', { n: d.final })}
                   </p>
                 </div>
                 <span className="w-40">
@@ -119,22 +138,20 @@ export default function Programs() {
                 </span>
                 <HurufBadge nilai={d.rata} />
                 <span className="w-9 text-right text-[16px] font-extrabold tabular-nums text-ink">
-                  {d.rata ?? '—'}
+                  {d.rata ?? '-'}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
-          <EmptyState title="Tidak ada data pada filter ini">
-            Ubah pilihan fakultas, angkatan, atau semester.
+          <EmptyState title={t('Tidak ada data pada filter ini')}>
+            {t('Ubah pilihan fakultas, angkatan, atau semester.')}
           </EmptyState>
         )}
 
         <div className="px-5 pb-4 sm:px-6">
           <CatatanKaki>
-            Angka ini bukan peringkat. Komposisi mata kuliah, jadwal asesmen, dan program kemahasiswaan tiap unit
-            berbeda, dan angkatan yang berbeda berada pada semester yang berbeda pula — sehingga jumlah aspek yang
-            sudah dinilai tidak sama.
+            {t('Angka ini bukan peringkat. Komposisi mata kuliah, jadwal asesmen, dan program kemahasiswaan tiap unit berbeda, dan angkatan yang berbeda berada pada semester yang berbeda pula, sehingga jumlah aspek yang sudah dinilai tidak sama.')}
           </CatatanKaki>
         </div>
       </Card>

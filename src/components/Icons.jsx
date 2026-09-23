@@ -246,6 +246,14 @@ export const IconLock = (p) => (
   </Svg>
 )
 
+/* Kotak masuk — dipakai panel dosen untuk pengumpulan yang baru datang. */
+export const IconInbox = (p) => (
+  <Svg {...p}>
+    <path d="M3.4 13.2 6 5.6A2 2 0 0 1 7.9 4.2h8.2A2 2 0 0 1 18 5.6l2.6 7.6" />
+    <path d="M3.4 13.2h4.3l1.1 2.4h6.4l1.1-2.4h4.3v4.6a2 2 0 0 1-2 2H5.4a2 2 0 0 1-2-2z" />
+  </Svg>
+)
+
 export const IconUpload = (p) => (
   <Svg {...p}>
     <path d="M12 15.6V4.4M8 8.4l4-4 4 4M4.4 19.6h15.2" />

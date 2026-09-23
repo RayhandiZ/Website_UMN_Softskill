@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { IconRefresh } from '../../components/Icons'
 import { segarkanData, terakhirDiperbarui, useStore } from '../../lib/store'
+import { useTeks } from '../../lib/bahasa'
 
 /* --------------------------------------------------------------------------
    Penanda kesegaran data di panel Kemahasiswaan.
@@ -47,19 +48,20 @@ const jamnya = (d) =>
     timeZone: ZONA,
   }).format(d)
 
-function selisih(dari, sampai) {
+function selisih(t, dari, sampai) {
   const detik = Math.max(0, Math.round((sampai - dari) / 1000))
-  if (detik < 60) return 'baru saja'
+  if (detik < 60) return t('baru saja')
   const menit = Math.round(detik / 60)
-  if (menit < 60) return menit + ' menit lalu'
+  if (menit < 60) return t('{n} menit lalu', { n: menit })
   const jam = Math.round(menit / 60)
-  if (jam < 24) return jam + ' jam lalu'
+  if (jam < 24) return t('{n} jam lalu', { n: jam })
   return null
 }
 
 export default function StatusData() {
   // Ikut menghitung ulang setiap ada perubahan data.
   useStore()
+  const t = useTeks()
 
   /* Dirender hanya setelah menempel di peramban. Jamnya berbeda antara render
      di server dan render pertama di klien, dan React menolak hidrasi yang
@@ -77,22 +79,25 @@ export default function StatusData() {
   if (!siap) return null
 
   const waktu = terakhirDiperbarui()
-  const relatif = sekarang ? selisih(waktu, sekarang) : null
+  const relatif = sekarang ? selisih(t, waktu, sekarang) : null
 
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
       <span className="text-[13.5px] text-ink-2">
-        Terakhir diperbarui {tanggalnya(waktu)}, {jamnya(waktu)} WIB
+        {t('Terakhir diperbarui {tanggal}, {jam} WIB', {
+          tanggal: tanggalnya(waktu),
+          jam: jamnya(waktu),
+        })}
         {relatif ? <span className="text-ink-3"> · {relatif}</span> : null}
       </span>
       <button
         type="button"
         onClick={segarkanData}
-        aria-label="Segarkan data sekarang"
+        aria-label={t('Segarkan data sekarang')}
         className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[12.5px] font-bold text-ink-2 transition hover:border-brand-ink hover:text-brand-ink"
       >
         <IconRefresh size={13} />
-        Segarkan
+        {t('Segarkan')}
       </button>
     </span>
   )

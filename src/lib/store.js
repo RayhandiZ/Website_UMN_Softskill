@@ -1,6 +1,14 @@
 import { useSyncExternalStore } from 'react'
 import { getKomponenById } from './curriculum.js'
-import { AUDIT_LOG, PENGAJUAN_KOREKSI, getStudentByNim, resetTranskripCache } from './mockData.js'
+import { periksaUsulan } from './rules.js'
+import {
+  AUDIT_LOG,
+  PENGAJUAN_KOREKSI,
+  USULAN_AWAL,
+  getDosenByNip,
+  getStudentByNim,
+  resetTranskripCache,
+} from './mockData.js'
 
 /* --------------------------------------------------------------------------
    Penyimpanan perubahan nilai.
@@ -245,6 +253,195 @@ export function putuskanKoreksi(id, keputusan, { aktor, catatan }) {
   return true
 }
 
+/* --------------------------- usulan nilai dosen --------------------------- */
+
+/* --------------------------------------------------------------------------
+   Dosen TIDAK menulis ke transkrip.
+
+   Ini keputusan yang menentukan bentuk seluruh fitur dosen. Kalau halaman
+   dosen boleh memanggil simpanBatch() sendiri, syarat "perlu dikonfirmasi dan
+   di-approve" hanya menjadi janji di antarmuka — nilainya sudah terlanjur masuk
+   sebelum siapa pun menyetujui, dan persetujuan berubah jadi formalitas yang
+   tidak menahan apa-apa.
+
+   Jadi dosen menulis ke antrean ini. Nilainya baru benar-benar menyentuh
+   transkrip ketika putuskanUsulan(..., 'disetujui') dipanggil dari panel
+   Kemahasiswaan — dan saat itu ia lewat simpanBatch() yang sama persis dengan
+   jalur admin, sehingga ikut tercatat di audit log dan tetap bisa di-rollback
+   sebagai satu batch.
+   -------------------------------------------------------------------------- */
+
+export const USULAN_NILAI = [...USULAN_AWAL]
+
+let urutUsulan = 0
+
+/**
+ * Mencatat usulan nilai dari seorang dosen. Tidak ada satu angka pun yang
+ * berpindah ke data mahasiswa di sini.
+ *
+ * `entri` berbentuk { nim, komponenId, nilai }.
+ * `cara` 'manual' atau 'import' — apa yang benar-benar dilakukan dosen.
+ */
+export function usulkanNilai({ dosen, cara = 'manual', catatan = '', entri }) {
+  if (!dosen?.nip) throw new Error('Usulan harus punya dosen pengusul.')
+  const bersih = (entri ?? []).filter(
+    (e) => e && e.nim && e.komponenId && Number.isFinite(Number(e.nilai)),
+  )
+  if (!bersih.length) throw new Error('Tidak ada nilai yang bisa diusulkan.')
+
+  /* Satu kelas bisa berisi mahasiswa dari beberapa angkatan. Menulis salah
+     satunya saja akan menyesatkan pembaca riwayat batch, jadi keadaan campuran
+     disebut apa adanya. */
+  const angkatan = [
+    ...new Set(bersih.map((e) => getStudentByNim(e.nim)?.angkatanId).filter(Boolean)),
+  ]
+
+  urutUsulan++
+  const usulan = {
+    id: 'U-' + String(urutUsulan).padStart(3, '0'),
+    dosenNip: dosen.nip,
+    dosenNama: dosen.nama ?? dosen.name ?? getDosenByNip(dosen.nip)?.nama ?? dosen.nip,
+    sumber: dosen.sumber,
+    semester: dosen.semester,
+    prodi: dosen.prodi ?? null,
+    angkatanId: angkatan.length === 1 ? angkatan[0] : 'campuran',
+    cara,
+    catatan: String(catatan ?? '').trim(),
+    waktu: waktuSekarang(),
+    status: 'menunggu',
+    entri: bersih.map(({ nim, komponenId, nilai }) => ({
+      nim,
+      nama: getStudentByNim(nim)?.name ?? nim,
+      komponenId,
+      nilai: Number(nilai),
+    })),
+    keputusan: null,
+    batchId: null,
+  }
+
+  USULAN_NILAI.unshift(usulan)
+  berubah()
+  simpanKePenyimpanan()
+  return usulan
+}
+
+/**
+ * Keputusan Kemahasiswaan atas satu usulan.
+ *
+ *   'disetujui' → nilainya ditulis lewat simpanBatch(), jalur yang sama dengan
+ *                 input admin; batch-nya tercatat dan bisa di-rollback.
+ *   'ditolak'   → tidak ada nilai yang berpindah; usulannya tetap tersimpan
+ *                 sebagai catatan, lengkap dengan alasannya.
+ *
+ * Mengembalikan boolean, BUKAN Promise — seperti putuskanKoreksi.
+ */
+export function putuskanUsulan(id, keputusan, { aktor, catatan = '' } = {}) {
+  const u = USULAN_NILAI.find((x) => x.id === id)
+  if (!u) return false
+  if (u.status !== 'menunggu') return false
+  if (keputusan !== 'disetujui' && keputusan !== 'ditolak') {
+    throw new Error('Keputusan harus "disetujui" atau "ditolak".')
+  }
+
+  if (keputusan === 'disetujui') {
+    /* Konfirmasi oleh SISTEM, bukan sekadar oleh orang yang menekan tombol.
+
+       Diperiksa di sini, bukan hanya di halaman persetujuan: aturan yang hanya
+       dijaga antarmuka akan bocor pada pemanggil berikutnya. Baris yang tidak
+       lolos tidak ikut ditulis, dan alasannya disimpan supaya kedua pihak bisa
+       membaca apa yang terjadi. */
+    const periksa = periksaUsulan(u.entri, { cariMahasiswa: getStudentByNim, sumber: u.sumber })
+    u.ditolakSistem = periksa.ditolak.map((x) => ({
+      nim: x.nim,
+      komponenId: x.komponenId,
+      alasan: x.alasan,
+    }))
+
+    if (!periksa.diterima.length) {
+      throw new Error(
+        'Tidak ada baris yang lolos pemeriksaan sistem: ' + (periksa.ditolak[0]?.alasan[0] ?? '-'),
+      )
+    }
+
+    const batch = simpanBatch({
+      sumber: u.sumber,
+      semester: u.semester,
+      angkatanId: u.angkatanId,
+      /* Pelakunya tetap dosen pengusul — dialah yang menilai. Penyetujunya
+         dicatat terpisah di bawah, supaya jejaknya tidak kehilangan salah satu
+         dari keduanya. */
+      aktor: u.dosenNama,
+      cara: u.cara,
+      entri: periksa.diterima.map(({ nim, komponenId, nilai }) => ({ nim, komponenId, nilai })),
+    })
+    u.batchId = batch.id
+    u.jumlahDitulis = periksa.diterima.length
+  }
+
+  u.status = keputusan
+  u.keputusan = {
+    oleh: aktor,
+    tanggal: new Date().toISOString().slice(0, 10),
+    catatan: String(catatan ?? '').trim(),
+  }
+  berubah()
+  simpanKePenyimpanan()
+  return true
+}
+
+export const usulanMenunggu = () => USULAN_NILAI.filter((u) => u.status === 'menunggu')
+
+export const usulanDosen = (nip) => USULAN_NILAI.filter((u) => u.dosenNip === nip)
+
+/* Peta (nim|komponenId) → usulan terkait. Dibangun ulang hanya ketika data
+   berubah: daftar pengumpulan memanggilnya ratusan kali per render, dan
+   pemindaian linear di tiap baris akan terasa. */
+let petaUsulan = null
+let petaVersi = -1
+
+function segarkanPeta() {
+  if (petaVersi === versi && petaUsulan) return petaUsulan
+  petaUsulan = new Map()
+  /* Dibaca dari belakang supaya usulan TERBARU yang menang bila satu komponen
+     pernah diusulkan lebih dari sekali. */
+  for (let i = USULAN_NILAI.length - 1; i >= 0; i--) {
+    const u = USULAN_NILAI[i]
+    for (const e of u.entri) petaUsulan.set(e.nim + '|' + e.komponenId, { usulan: u, entri: e })
+  }
+  petaVersi = versi
+  return petaUsulan
+}
+
+/**
+ * Status satu pengumpulan — dihitung, bukan disimpan.
+ *
+ * Menyimpannya sebagai kolom sendiri akan melahirkan sumber kebenaran kedua
+ * yang bisa berbeda dari nilai yang benar-benar tersimpan; satu rollback saja
+ * sudah cukup membuat keduanya berselisih.
+ *
+ *   'dinilai'  nilainya sudah ada di transkrip
+ *   'menunggu' sudah diusulkan dosen, menunggu keputusan Kemahasiswaan
+ *   'ditolak'  usulan terakhirnya ditolak — perlu diusulkan ulang
+ *   'masuk'    baru terkumpul, belum disentuh
+ */
+export function statusPengumpulan({ nim, komponenId, aspekId }) {
+  const tersimpan = getStudentByNim(nim)?.nilai?.[aspekId]?.komponen?.[komponenId]
+  if (tersimpan) return { id: 'dinilai', nilai: tersimpan.nilai, oleh: tersimpan.penilai }
+
+  const jejak = segarkanPeta().get(nim + '|' + komponenId)
+  if (jejak?.usulan.status === 'menunggu') {
+    return { id: 'menunggu', nilai: jejak.entri.nilai, oleh: jejak.usulan.dosenNama }
+  }
+  if (jejak?.usulan.status === 'ditolak') {
+    return {
+      id: 'ditolak',
+      nilai: jejak.entri.nilai,
+      catatan: jejak.usulan.keputusan?.catatan ?? '',
+    }
+  }
+  return { id: 'masuk', nilai: null }
+}
+
 /* ------------------------------- penyimpanan ------------------------------ */
 
 const adaPenyimpanan = () => {
@@ -267,6 +464,8 @@ function simpanKePenyimpanan() {
       JSON.stringify({
         versi: 1,
         urut,
+        urutUsulan,
+        usulan: USULAN_NILAI,
         batch: BATCH_SESI.map(({ id, sumber, semester, angkatanId, aktor, cara, waktu, status, entri }) => ({
           id, sumber, semester, angkatanId, aktor, cara, waktu, status, entri,
         })),
@@ -298,6 +497,16 @@ export function muatDariPenyimpanan() {
   BATCH_SESI.length = 0
   for (const b of data.batch) BATCH_SESI.push({ ...b, jejak: [], jumlah: b.entri.length })
   urut = data.urut ?? BATCH_SESI.length
+
+  /* Hanya ditimpa bila penyimpanannya memang memuat daftar usulan. Berkas
+     tersimpan dari versi sebelum fitur ini ada tidak punya kuncinya, dan
+     mengosongkan daftar karenanya akan menghapus contoh bawaan tanpa ada yang
+     menggantikan. */
+  if (Array.isArray(data.usulan)) {
+    USULAN_NILAI.length = 0
+    for (const u of data.usulan) USULAN_NILAI.push(u)
+    urutUsulan = data.urutUsulan ?? 0
+  }
 
   PENGUNCIAN.length = 0
   for (const p of data.penguncian ?? []) {
@@ -350,7 +559,10 @@ export function segarkanData() {
 export function bersihkanPerubahan() {
   BATCH_SESI.length = 0
   PENGUNCIAN.length = 0
+  USULAN_NILAI.length = 0
+  USULAN_NILAI.push(...USULAN_AWAL)
   urut = 0
+  urutUsulan = 0
   terapkanUlang()
   try {
     localStorage.removeItem(KUNCI)
@@ -371,7 +583,7 @@ if (typeof window !== 'undefined' && adaPenyimpanan()) {
 }
 
 export const PERINGATAN_SESI = SIMPAN_PERUBAHAN
-  ? 'Perubahan tersimpan di peramban ini dan bertahan setelah halaman dimuat ulang — purwarupa ini belum terhubung ke basis data kampus.'
+  ? 'Perubahan tersimpan di peramban ini dan bertahan setelah halaman dimuat ulang. Purwarupa ini belum terhubung ke basis data kampus.'
   : 'Perubahan tersimpan selama sesi ini saja dan hilang bila halaman dimuat ulang.'
 
 

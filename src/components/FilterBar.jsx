@@ -1,6 +1,7 @@
 import { SearchInput, Select } from './Ui'
 import { COHORTS, FACULTIES, programStudi } from '../lib/mockData'
 import { CONFIG } from '../lib/config'
+import { useTeks } from '../lib/bahasa'
 
 /* Satu baris kendali di atas grafik dan tabel. Filter memilih baris data,
    bukan mengganti warna seri. */
@@ -16,6 +17,7 @@ export const DEFAULT_FILTER = {
 const LABEL_ANGKATAN = Object.fromEntries(COHORTS.map((c) => [c.label, c.id]))
 
 export default function FilterBar({ value, onChange, withSearch = true, className = '' }) {
+  const t = useTeks()
   const set = (k) => (v) => {
     const next = { ...value, [k]: v }
     if (k === 'faculty') next.program = 'Semua'
@@ -31,19 +33,42 @@ export default function FilterBar({ value, onChange, withSearch = true, classNam
   return (
     <div className={'card card-pad ' + className}>
       <div className={'grid gap-3 sm:grid-cols-2 ' + (withSearch ? 'xl:grid-cols-5' : 'xl:grid-cols-4')}>
-        <Select label="Fakultas" value={value.faculty} onChange={set('faculty')} options={facultyOptions} />
-        <Select label="Program studi" value={value.program} onChange={set('program')} options={programOptions} />
         <Select
-          label="Angkatan"
+          label={t('Fakultas')}
+          value={value.faculty}
+          onChange={set('faculty')}
+          options={facultyOptions}
+          tampilkan={t}
+        />
+        <Select
+          label={t('Program studi')}
+          value={value.program}
+          onChange={set('program')}
+          options={programOptions}
+          tampilkan={t}
+        />
+        <Select
+          label={t('Angkatan')}
           value={angkatanLabel}
           onChange={set('angkatan')}
           options={['Semua', ...COHORTS.map((c) => c.label)]}
+          tampilkan={t}
         />
-        <Select label="Semester" value={value.semester} onChange={set('semester')} options={semesterOptions} />
+        <Select
+          label={t('Semester')}
+          value={value.semester}
+          onChange={set('semester')}
+          options={semesterOptions}
+          tampilkan={t}
+        />
         {withSearch ? (
           <div>
-            <span className="mb-1.5 block label">Cari mahasiswa</span>
-            <SearchInput value={value.query} onChange={set('query')} placeholder="Nama, NIM, atau prodi…" />
+            <span className="mb-1.5 block label">{t('Cari mahasiswa')}</span>
+            <SearchInput
+              value={value.query}
+              onChange={set('query')}
+              placeholder={t('Nama, NIM, atau prodi…')}
+            />
           </div>
         ) : null}
       </div>

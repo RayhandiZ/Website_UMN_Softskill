@@ -5,6 +5,8 @@ import { TautanNav } from '../../lib/nav'
 import Footer from '../../components/Footer'
 import Laci from '../../components/Laci'
 import MenuAkun from '../../components/MenuAkun'
+import TombolBahasa from '../../components/TombolBahasa'
+import LayananTambahan from '../../components/LayananTambahan'
 import {
   IconCertificate,
   IconDocument,
@@ -20,6 +22,7 @@ import { getStudent, personaAktif, transkripOf } from '../../lib/mockData'
 import { useStore } from '../../lib/store'
 import { useAuth } from '../../lib/auth'
 import { useTheme } from '../../lib/theme'
+import { useTeks } from '../../lib/bahasa'
 import { kunciSesi, useProfil } from '../../lib/profil'
 import LoncengBelumDinilai from './LoncengBelumDinilai'
 
@@ -46,18 +49,18 @@ import LoncengBelumDinilai from './LoncengBelumDinilai'
 
 /* Pintasan footer menunjuk ke halaman yang memang ada, bukan tautan hiasan. */
 const PINTASAN = [
-  { ke: '/mahasiswa/transkrip', label: 'Transcript', icon: IconDocument },
-  { ke: '/mahasiswa/peta', label: 'Road Map', icon: IconRoute },
-  { ke: '/mahasiswa/riwayat', label: 'History', icon: IconList },
-  { ke: '/mahasiswa/sertifikat', label: 'Sertificate', icon: IconCertificate },
+  { ke: '/mahasiswa/transkrip', label: 'Transkrip', icon: IconDocument },
+  { ke: '/mahasiswa/peta', label: 'Peta Perjalanan', icon: IconRoute },
+  { ke: '/mahasiswa/riwayat', label: 'Riwayat', icon: IconList },
+  { ke: '/mahasiswa/sertifikat', label: 'Sertifikat', icon: IconCertificate },
 ]
 
 const MENU = [
   { to: '/mahasiswa', label: 'Dashboard', icon: IconGauge, end: true },
-  { to: '/mahasiswa/transkrip', label: 'Transcript', icon: IconDocument },
-  { to: '/mahasiswa/peta', label: 'Road Map', icon: IconRoute },
-  { to: '/mahasiswa/riwayat', label: 'History', icon: IconList },
-  { to: '/mahasiswa/sertifikat', label: 'Certificate', icon: IconCertificate },
+  { to: '/mahasiswa/transkrip', label: 'Transkrip', icon: IconDocument },
+  { to: '/mahasiswa/peta', label: 'Peta Perjalanan', icon: IconRoute },
+  { to: '/mahasiswa/riwayat', label: 'Riwayat', icon: IconList },
+  { to: '/mahasiswa/sertifikat', label: 'Sertifikat', icon: IconCertificate },
 ]
 
 /* Konteks mahasiswa aktif.
@@ -75,6 +78,7 @@ export const useStudent = () => useContext(KonteksMahasiswa)
    di atas 9:1), lebih lembut daripada isian pekat panel Kemahasiswaan tetapi
    tetap terbaca sekali lihat. */
 function DaftarMenu({ onPilih, besar = false }) {
+  const t = useTeks()
   return (
     <ul className="space-y-1">
       {MENU.map(({ to, label, icon: Icon, end }) => (
@@ -90,7 +94,7 @@ function DaftarMenu({ onPilih, besar = false }) {
             }
           >
             <Icon size={20} className="shrink-0" />
-            <span className="truncate">{label}</span>
+            <span className="truncate">{t(label)}</span>
           </TautanNav>
         </li>
       ))}
@@ -100,11 +104,12 @@ function DaftarMenu({ onPilih, besar = false }) {
 
 function TombolTema() {
   const { theme, toggle } = useTheme()
+  const t = useTeks()
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
+      aria-label={t(theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap')}
       className="grid h-10 w-10 place-items-center rounded-2xl border border-line bg-surface text-ink-2 transition hover:text-ink"
     >
       {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
@@ -116,6 +121,7 @@ export default function StudentLayout({ children }) {
   // Ikut menghitung ulang begitu ada nilai yang masuk dari panel Kemahasiswaan.
   useStore()
   const { user, logout } = useAuth()
+  const teks = useTeks()
   const router = useRouter()
   const [laci, setLaci] = useState(false)
 
@@ -139,7 +145,7 @@ export default function StudentLayout({ children }) {
             </span>
           </Link>
 
-          <nav aria-label="Menu mahasiswa">
+          <nav aria-label={teks('Menu mahasiswa')}>
             <DaftarMenu />
           </nav>
         </div>
@@ -156,7 +162,7 @@ export default function StudentLayout({ children }) {
             <button
               type="button"
               onClick={() => setLaci(true)}
-              aria-label="Buka menu navigasi"
+              aria-label={teks('Buka menu navigasi')}
               aria-expanded={laci}
               className="-ml-1 grid h-10 w-10 shrink-0 place-items-center rounded-2xl text-ink transition hover:bg-surface lg:hidden"
             >
@@ -172,6 +178,7 @@ export default function StudentLayout({ children }) {
 
             <div className="ml-auto flex items-center gap-2">
               <LoncengBelumDinilai t={t} />
+              <TombolBahasa nada="terang" />
               <TombolTema />
               <MenuAkun
                 foto={foto}
@@ -189,9 +196,13 @@ export default function StudentLayout({ children }) {
         <Footer pintasan={PINTASAN} />
       </div>
 
+      {/* Tombol bantuan mengambang. Diletakkan di kerangka, bukan di tiap
+          halaman, supaya ia ada di mana pun mahasiswa berada. */}
+      <LayananTambahan />
+
       {/* --------------------------- laci layar kecil -------------------------- */}
       <Laci buka={laci} onTutup={() => setLaci(false)}>
-        <nav aria-label="Menu mahasiswa" className="p-3">
+        <nav aria-label={teks('Menu mahasiswa')} className="p-3">
           <DaftarMenu besar onPilih={() => setLaci(false)} />
 
           <span className="my-3 block h-px bg-line" />
@@ -201,7 +212,7 @@ export default function StudentLayout({ children }) {
             onClick={() => setLaci(false)}
             className="block rounded-2xl px-3.5 py-3.5 text-[16px] font-bold text-ink transition hover:bg-surface-2"
           >
-            Profil
+            {teks('Profil')}
           </Link>
           <button
             type="button"
@@ -212,7 +223,7 @@ export default function StudentLayout({ children }) {
             }}
             className="block w-full rounded-2xl px-3.5 py-3.5 text-left text-[16px] font-bold text-[var(--critical)] transition hover:bg-surface-2"
           >
-            Keluar
+            {teks('Keluar')}
           </button>
         </nav>
       </Laci>
