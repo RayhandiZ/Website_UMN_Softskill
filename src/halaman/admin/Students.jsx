@@ -208,7 +208,7 @@ export default function Students() {
                   <td className="px-4 py-3 text-right text-[13px] tabular-nums text-ink-2">
                     {x.dinilai}/{x.total}
                     {x.kosong ? (
-                      <span className="ml-1.5 text-[var(--warning)]">
+                      <span className="ml-1.5 text-ink-2">
                         ·{t('{n} kosong', { n: x.kosong })}
                       </span>
                     ) : null}

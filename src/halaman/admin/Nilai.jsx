@@ -11,6 +11,7 @@ import {
   Select,
   StatTile,
   Tabs,
+  TandaDraft,
 } from '../../components/Ui'
 import {
   IconAlert,
@@ -729,9 +730,9 @@ function InputManual({
                   <span className="block max-w-[190px] normal-case leading-snug text-ink-2">{k.label}</span>
                   <span className="mt-1 block font-mono text-[10px] text-ink-3">{k.id}</span>
                   {k.status === 'draft' ? (
-                    <span className="mt-1 inline-block text-[10px] font-bold text-[var(--warning)]">
-                      {teks('skema belum final')}
-                    </span>
+                    <TandaDraft className="mt-1 inline-block">
+                      {teks('Skema belum final')}
+                    </TandaDraft>
                   ) : null}
                 </th>
               ))}

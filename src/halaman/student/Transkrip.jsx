@@ -1,5 +1,15 @@
 import { Fragment, useState } from 'react'
-import { Badge, Card, CardHeader, CatatanKaki, EmptyState, HurufBadge, Terkunci } from '../../components/Ui'
+import {
+  Badge,
+  Card,
+  CardHeader,
+  CatatanKaki,
+  EmptyState,
+  HurufBadge,
+  StatusTeks,
+  TandaDraft,
+  Terkunci,
+} from '../../components/Ui'
 import RadarCluster from '../../components/charts/RadarCluster'
 import AspectBars from '../../components/charts/AspectBars'
 import {
@@ -17,11 +27,13 @@ import { PERIODE_AKTIF, labelPeriode, transkripOf } from '../../lib/mockData'
 import { ajukanKoreksi, koreksiMilik, useStore } from '../../lib/store'
 import { useTeks } from '../../lib/bahasa'
 
+/* Tanpa `tone`: status di transkrip pun kata biasa, bukan pil berwarna.
+   Lihat StatusTeks di components/Ui.jsx untuk alasannya. */
 const STATUS_LABEL = {
-  terkunci: { teks: 'Terkunci', tone: 'neutral' },
-  menunggu: { teks: 'Menunggu nilai', tone: 'warning' },
-  berjalan: { teks: 'Sementara', tone: 'brand' },
-  final: { teks: 'Final', tone: 'good' },
+  terkunci: { teks: 'Terkunci' },
+  menunggu: { teks: 'Menunggu nilai' },
+  berjalan: { teks: 'Sementara' },
+  final: { teks: 'Final' },
 }
 
 const nomorDokumen = (student) =>
@@ -99,10 +111,10 @@ export default function Transkrip({ student }) {
             </p>
             <p className="mt-1 text-[12px] font-semibold text-ink-3">{teks('Nilai akhir')}</p>
           </div>
-          <div className="min-w-[220px] flex-1">
+          <div className="min-w-[220px] flex-1 print:min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <HurufBadge nilai={t.akhir.nilai} panjang />
-              <Badge tone={t.akhir.status === 'final' ? 'good' : 'warning'}>{teks(label.teks)}</Badge>
+              <StatusTeks kuat={t.akhir.status === 'final'}>{teks(label.teks)}</StatusTeks>
             </div>
             <p className="mt-2.5 max-w-xl text-[13.5px] leading-relaxed text-ink-2">
               {teks(label.rinci, label.nilai)}
@@ -118,15 +130,23 @@ export default function Transkrip({ student }) {
       </Card>
 
       {/* ------------------------------ tabel utama ------------------------------ */}
-      <Card className="overflow-hidden">
+      {/* cetak-transkrip: penanda untuk aturan @media print di index.css.
+          Disasar lewat kelas, bukan lewat elemen, supaya tabel lain di
+          aplikasi tidak ikut terpengaruh. */}
+      <Card className="cetak-transkrip overflow-hidden">
         <CardHeader
           title={teks('Rincian capaian per semester')}
           subtitle={teks('Klik baris aspek untuk melihat komponen asesmen yang membentuk nilainya')}
           icon={IconDownload}
         />
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] border-collapse">
+        {/* print:overflow-visible + print:min-w-0 — sebab pemotongan di kertas.
+            Di layar, tabel selebar 820px bisa digulir mendatar. Di kertas
+            tidak ada yang bisa digulir: apa pun yang melewati lebar halaman
+            hilang begitu saja, tanpa tanda apa pun bahwa ia pernah ada.
+            A4 potret bermargin 14mm hanya menyisakan sekitar 688px. */}
+        <div className="overflow-x-auto print:overflow-visible">
+          <table className="w-full min-w-[820px] border-collapse print:min-w-0 print:table-fixed">
             <thead>
               <tr className="border-b border-line bg-surface-2">
                 {['Kode', 'Aspek CPMK', 'Cluster', 'Sumber penilaian', 'Nilai', 'Huruf', 'Status'].map((h, i) => (
@@ -183,16 +203,20 @@ export default function Transkrip({ student }) {
                       >
                         <td className="px-4 py-3">
                           <span className="flex items-center gap-2 text-[13px] font-bold text-ink">
-                            <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: area.warna }} />
+                            <span
+                              aria-hidden="true"
+                              className="tanda-area h-2.5 w-2.5 rounded-[3px]"
+                              style={{ background: area.warna }}
+                            />
                             {a.aspek.kode}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           <span className="text-[14px] font-semibold text-ink">{a.aspek.nama}</span>
                           {a.adaDraft ? (
-                            <span className="ml-2 align-middle text-[11px] font-bold text-[var(--warning)]">
-                              {teks('skema belum final')}
-                            </span>
+                            <TandaDraft className="ml-2 align-middle">
+                              {teks('Skema belum final')}
+                            </TandaDraft>
                           ) : null}
                         </td>
                         <td className="px-4 py-3 text-[12.5px] text-ink-2">{cluster.id}</td>
@@ -201,7 +225,7 @@ export default function Transkrip({ student }) {
                             {sumberHadir.map((s) => (
                               <span
                                 key={s}
-                                className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-bold text-ink-2"
+                                className="sumber-pil rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-bold text-ink-2"
                               >
                                 {SUMBER[s].label}
                               </span>
@@ -225,9 +249,11 @@ export default function Transkrip({ student }) {
                             <Terkunci semester={a.aspek.semester} />
                           ) : (
                             <>
-                              <Badge tone={st.tone}>{teks(st.teks)}</Badge>
+                              <StatusTeks kuat={a.status === 'final'}>
+                                {teks(st.teks)}
+                              </StatusTeks>
                               {a.alasanSementara ? (
-                                <span className="ml-auto mt-1 block max-w-[210px] text-[11px] leading-snug text-ink-3">
+                                <span className="ml-auto mt-1 block max-w-[210px] text-[11px] leading-snug text-ink-3 print:max-w-none">
                                   {teks(a.alasanSementara)}
                                 </span>
                               ) : null}
@@ -264,7 +290,11 @@ export default function Transkrip({ student }) {
       </Card>
 
       {/* -------------------------------- grafik -------------------------------- */}
-      <div className="grid gap-6 xl:grid-cols-2">
+      {/* print:hidden — transkrip yang dicetak adalah dokumen resmi berisi
+          angka, bukan laporan analitik. Radar dan batang di sini menambah dua
+          halaman kertas tanpa menambah satu pun keterangan yang belum ada di
+          tabel di atasnya. */}
+      <div className="grid gap-6 xl:grid-cols-2 print:hidden">
         <RadarCluster data={clusterRows} seriesName={student.name.split(' ')[0]} />
         <AspectBars rows={t.aspek} />
       </div>
@@ -349,8 +379,10 @@ function BarisRincian({ aspek }) {
           )}
         </p>
 
-        <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-          <table className="w-full min-w-[680px] border-collapse">
+        {/* Sebab yang sama dengan tabel utama: baris aspek yang sedang dibuka
+            ikut tercetak, dan 680px pun masih melewati lebar kertas. */}
+        <div className="overflow-x-auto rounded-xl border border-line bg-surface print:overflow-visible">
+          <table className="w-full min-w-[680px] border-collapse print:min-w-0 print:table-fixed">
             <thead>
               <tr className="border-b border-line">
                 {['Sumber', 'Komponen asesmen', 'Ranah', 'Bobot', 'Nilai', 'Penilai', 'Tanggal masuk'].map((h, i) => (
@@ -373,7 +405,7 @@ function BarisRincian({ aspek }) {
                   <td className="px-3 py-2.5 text-[13px] text-ink">
                     {x.label}
                     {x.status === 'draft' ? (
-                      <span className="ml-2 text-[11px] font-bold text-[var(--warning)]">{t('draft')}</span>
+                      <TandaDraft className="ml-2">{t('Draft')}</TandaDraft>
                     ) : null}
                   </td>
                   <td className="px-3 py-2.5 text-[12.5px] text-ink-2">
@@ -386,9 +418,7 @@ function BarisRincian({ aspek }) {
                     {x.terisi ? (
                       <span className="text-[13.5px] font-bold tabular-nums text-ink">{x.nilai}</span>
                     ) : (
-                      <span className="text-[12px] font-semibold text-[var(--warning)]">
-                        {t('belum masuk')}
-                      </span>
+                      <StatusTeks>{t('belum masuk')}</StatusTeks>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-[12.5px] text-ink-2">{x.penilai ?? '-'}</td>

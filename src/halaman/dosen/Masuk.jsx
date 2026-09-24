@@ -250,8 +250,7 @@ export default function Masuk() {
                           {b.waktu}
                         </span>
                         {b.terlambat ? (
-                          <span className="mt-1 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--warning)]">
-                            <IconClock size={12} />
+                          <span className="mt-1 block text-[12px] font-bold text-[var(--warning-ink)]">
                             {t('Terlambat')}
                           </span>
                         ) : null}

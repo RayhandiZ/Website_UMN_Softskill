@@ -65,15 +65,12 @@ export default function Login() {
         </div>
 
         <div className="my-auto max-w-lg">
-          <p className="text-[20px] font-bold uppercase tracking-[.16em] text-[var(--accent)]">
-            {t('Dashboard Monitoring')}
-          </p>
           <h1 className="mt-4 text-[35px] font-extrabold leading-[1.1] tracking-tight">
-            {t('Capaian softskill mahasiswa, terukur setiap semester.')}
+            {t('Apa sih UMN Softskill itu?')}
           </h1>
           <p className="mt-5 text-[15px] leading-relaxed text-white/70">
             {t(
-              'Tiga area pengembangan, sepuluh aspek CPMK, dinilai lewat PDP, mata kuliah humaniora, dan program kampus sepanjang Semester 1 sampai 3.',
+              'UMN Softskill merupakan sistem penilaian softskill yang dirancang untuk mengevaluasi dan mengembangkan kemampuan interpersonal, keterampilan teknis, dan kompetensi lainnya pada mahasiswa Universitas Multimedia Nusantara. Diantaranya ada tiga penilaian seperti dibawah ini:'
             )}
           </p>
 
@@ -116,7 +113,7 @@ export default function Login() {
           </div>
 
           <h2 className="text-[26px] font-extrabold tracking-tight text-ink">
-            {t('Masuk ke dashboard')}
+            {t('Masuk')}
           </h2>
           <p className="mt-2 text-[14px] text-ink-2">
             {t('Gunakan akun kampus Anda. Peran ditentukan otomatis dari domain email.')}
@@ -125,7 +122,7 @@ export default function Login() {
           <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
             <div>
               <label htmlFor="email" className="mb-2 block text-[13px] font-bold text-ink">
-                {t('Email')}
+                {t('Alamat email')}
               </label>
               <input
                 id="email"

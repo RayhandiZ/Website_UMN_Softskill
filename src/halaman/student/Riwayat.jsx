@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
-import { Badge } from '../../components/Ui'
+import { Badge, StatusTeks } from '../../components/Ui'
 import { IconCheck, IconChevronRight, IconClock, IconX } from '../../components/Icons'
 import { SUMBER, getAspek } from '../../lib/curriculum'
 import { transkripOf } from '../../lib/mockData'
@@ -77,15 +77,7 @@ function Catatan({ e }) {
       <span className="shrink-0 text-right">
         <span className="block text-[20px] font-extrabold leading-none text-ink">{e.k.nilai}</span>
         <span className="mt-2 block">
-          {e.final ? (
-            <Badge tone="good" icon={IconCheck}>
-              {t('Final')}
-            </Badge>
-          ) : (
-            <Badge tone="warning" icon={IconClock}>
-              {t('Sementara')}
-            </Badge>
-          )}
+          <StatusTeks kuat={e.final}>{t(e.final ? 'Final' : 'Sementara')}</StatusTeks>
         </span>
       </span>
     </li>

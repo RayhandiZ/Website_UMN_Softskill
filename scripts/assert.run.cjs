@@ -22,7 +22,8 @@ w.localStorage.setItem('sk5c.session', JSON.stringify({ role:'student', email:'a
     ['Basis perhitungan (R3)',     /berdasarkan 7 dari 10 aspek/],
     ['Aspek terkunci (R2)',        /Dibuka pada Semester 3/],
     ['Grup semester',              /Semester 1 .*Semester 2 .*Semester 3/],
-    ['Penanda skema draft (R4)',   /skema belum final/],
+    /* Penandanya kini teks merah berkurung, bukan lagi pil kuning. */
+    ['Penanda skema draft (R4)',   /\(Skema belum final\)/],
     ['Cluster lintas semester',    /CL6 baru dinilai sebagian|1\/2 aspek/],
     ['Catatan bukan nol (R2)',     /bukan bernilai nol/],
     ['Larangan tulis (R8)',        /tidak bisa mengubah nilai sendiri/],

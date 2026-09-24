@@ -90,6 +90,7 @@ export const EN = {
   'Menunggu keputusan': 'Awaiting decision',
   'belum masuk': 'awaiting score',
   'Dibuka pada Semester {n}': 'Opens in Semester {n}',
+  'Dibuka Semester {n}': 'Opens in Semester {n}',
   'Fase {n}': 'Phase {n}',
 
   /* ------------------------------- dashboard ----------------------------- */
@@ -108,6 +109,13 @@ export const EN = {
   Rincian: 'Details',
   Tutup: 'Close',
   'Aspek yang sudah dinilai': 'Aspects already graded',
+  /* --------------------------- sebaran aspek ----------------------------- */
+  'Sebaran nilai aspek': 'Aspect score spread',
+  '{n} aspek dinilai': '{n} aspects graded',
+  '{n} belum dibuka': '{n} not open yet',
+  'ambang {n}': 'threshold {n}',
+  'Sebaran nilai {n} aspek pada skala 0 sampai 100, terendah {rendah}, tertinggi {tinggi}':
+    'Spread of {n} aspect scores on a 0 to 100 scale, lowest {rendah}, highest {tinggi}',
   '{n} aspek belum dibuka': '{n} aspects not open yet',
   'Semua aspek sudah dibuka': 'All aspects are open',
   'Sudah dikunci dan tidak akan berubah lagi': 'Locked and will not change again',
@@ -235,8 +243,11 @@ export const EN = {
   'Aspek CPMK': 'CPMK aspect',
   'Sumber penilaian': 'Assessment source',
   Nilai: 'Score',
+  Penilaian: 'Scores',
   Huruf: 'Grade',
   'skema belum final': 'scheme not final',
+  'Skema belum final': 'Draft scheme',
+  Draft: 'Draft',
   'Aspek yang semesternya belum tiba ditandai gembok dan sengaja tidak diberi angka, bukan bernilai nol.':
     'Aspects whose semester has not arrived are marked with a padlock and deliberately given no number, not a zero.',
   'Bobot masih bersifat sementara dan dapat berubah.':
@@ -364,8 +375,6 @@ export const EN = {
   'Input Nilai': 'Enter Scores',
   'Status Usulan': 'Proposal Status',
   Pengumpulan: 'Submissions',
-  Nilai: 'Scores',
-  Angkatan: 'Cohort',
   'Program Studi': 'Study Programme',
   Overview: 'Overview',
 
@@ -419,7 +428,6 @@ export const EN = {
   '{n} final': '{n} final',
   'rata-rata {n}': 'average {n}',
   'aspek {kode}': 'aspect {kode}',
-  'diajukan {tanggal}': 'submitted {tanggal}',
   '{n} aspek': '{n} aspects',
   'Angkatan {label}': 'Cohort {label}',
   'angkatan {id}': 'cohort {id}',
@@ -514,7 +522,6 @@ export const EN = {
   'Semester yang diisi': 'Semester being filled',
   'Belum dipilih': 'Not chosen yet',
   '{n} aspek CPMK berada di semester ini': '{n} CPMK aspects sit in this semester',
-  'Sumber penilaian': 'Assessment source',
   'Kini di Semester {n}': 'Now in Semester {n}',
   'periode {periode}': 'period {periode}',
   'mengikuti program studi': 'follows the study programme',
@@ -546,13 +553,11 @@ export const EN = {
   'Pengajuan koreksi': 'Correction requests',
   'Tidak ada aspek yang bisa diisi dari sumber ini.':
     'No aspect can be filled from this source.',
-  'Aspek CPMK': 'CPMK aspect',
   '{n} komponen dari {unit}.': '{n} components from {unit}.',
   'Kosongkan sel yang belum dinilai; sel kosong tidak dihitung sebagai nol.':
     'Leave ungraded cells empty; an empty cell is not counted as zero.',
   'Baris yang tidak ditandai mengikuti aturan sistem: aspeknya menjadi final sendiri begitu seluruh komponennya terisi.':
     'An unmarked row follows the system rule: its aspect becomes final on its own once every component is filled.',
-  'skema belum final': 'scheme not final',
   '{n} nilai siap disimpan': '{n} scores ready to save',
   'Belum ada perubahan': 'No change yet',
   'Simpan nilai': 'Save scores',
@@ -585,7 +590,6 @@ export const EN = {
   'Kolom NIM': 'Student ID column',
   'Baris data': 'Data rows',
   'Kolom terpetakan': 'Columns mapped',
-  '{n} dari {total}': '{n} of {total}',
   'Kolom NIM tidak ditemukan. Beri nama kolom itu “NIM” atau “NPM”, lalu unggah ulang.':
     'No student ID column found. Name that column “NIM” or “NPM”, then upload again.',
   'Pemetaan kolom, periksa dan koreksi bila perlu':
@@ -820,4 +824,22 @@ export const EN = {
     'Limited CRUD for the ten aspects, assessment components, source and course component weightings, the letter grade rubric, and the aggregation mode, together with an impact simulation before saving: how many students move up or down a letter grade and how many change certificate eligibility.',
   'Tabel audit setiap perubahan nilai — waktu, aktor, aspek, komponen, nilai lama, nilai baru, dan sumber — dengan filter aktor, jenis aksi, dan rentang tanggal.':
     'An audit table of every score change (time, actor, aspect, component, old score, new score, and source) with filters for actor, action type, and date range.',
+
+  /* -------------------------- halaman masuk ------------------------------ */
+  'Apa sih UMN Softskill itu?': 'What exactly is UMN Softskill?',
+  'UMN Softskill merupakan sistem penilaian softskill yang dirancang untuk mengevaluasi dan mengembangkan kemampuan interpersonal, keterampilan teknis, dan kompetensi lainnya pada mahasiswa Universitas Multimedia Nusantara. Diantaranya ada tiga penilaian seperti dibawah ini:':
+    'UMN Softskill is an assessment system built to evaluate and develop the interpersonal skills, technical skills, and other competencies of Universitas Multimedia Nusantara students. It rests on the three assessment areas below:',
+
+  /* ----------------------------------------------------------------------
+     BELUM DITERJEMAHKAN — ditulis otomatis oleh `npm run bahasa:sync`.
+     Isi sisi kanannya, lalu pindahkan barisnya ke bagian yang sesuai di
+     atas. Selama masih kosong, kalimatnya tampil dalam bahasa Indonesia.
+     ---------------------------------------------------------------------- */
+  'Garis putus-putus: ambang {n}': 'Dashed line: threshold {n}',
+  'Grafik nilai per semester, Semester {a} sebesar {na} sampai Semester {b} sebesar {nb}. {ringkas}':
+    'Score by semester chart, Semester {a} at {na} through Semester {b} at {nb}. {ringkas}',
+  'Naik {d} sejak Semester {n}': 'Up {d} since Semester {n}',
+  'Nilai per semester': 'Score by semester',
+  'Tetap sejak Semester {n}': 'Unchanged since Semester {n}',
+  'Turun {d} sejak Semester {n}': 'Down {d} since Semester {n}',
 }

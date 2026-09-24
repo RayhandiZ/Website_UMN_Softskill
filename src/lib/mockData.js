@@ -218,6 +218,11 @@ function bangunNilai(angkatan, semesterAktif, basis, opsi = {}) {
   for (const aspek of getAspekList()) {
     if (aspek.semester > semesterAktif) continue
 
+    /* opsi.basisSemester memungkinkan satu mahasiswa punya taraf berbeda di
+       tiap semester. Tanpa ini setiap persona nilainya rata sepanjang program,
+       dan grafik trennya jadi garis datar -- benar, tapi tidak memperagakan
+       apa pun. Dipakai hanya oleh persona demo. */
+    const taraf = opsi.basisSemester?.[aspek.semester] ?? basis
     const periode = angkatan.periode[aspek.semester - 1]
     const batchId = 'B-' + angkatan.id + '-S' + aspek.semester
     const lampau = aspek.semester < semesterAktif
@@ -225,7 +230,7 @@ function bangunNilai(angkatan, semesterAktif, basis, opsi = {}) {
 
     if (lampau || terkunci || opsi.lengkap) {
       const lewati = opsi.kosongkan?.[aspek.id] ?? new Set()
-      nilai[aspek.id] = { komponen: isiKomponen(aspek.id, basis, periode, batchId, lewati) }
+      nilai[aspek.id] = { komponen: isiKomponen(aspek.id, taraf, periode, batchId, lewati) }
       continue
     }
 
@@ -243,7 +248,7 @@ function bangunNilai(angkatan, semesterAktif, basis, opsi = {}) {
       const buang = between(1, Math.max(1, semua.length - 1))
       for (let i = 0; i < buang; i++) lewati.add(semua[semua.length - 1 - i].id)
     }
-    nilai[aspek.id] = { komponen: isiKomponen(aspek.id, basis, periode, batchId, lewati) }
+    nilai[aspek.id] = { komponen: isiKomponen(aspek.id, taraf, periode, batchId, lewati) }
   }
   return nilai
 }
@@ -340,7 +345,18 @@ const PERSONA = [
     faculty: 'Teknik & Informatika',
     angkatan: angkatanSem2,
     basis: 84,
-    opsi: { tanpaMenunggu: true },
+    /* Semester 1 sengaja dipasang tepat di ambang sertifikat dan semester 2
+       jauh di atasnya, supaya grafik tren pada halaman mahasiswa memperagakan
+       kenaikan yang nyata -- bukan garis datar seperti kalau tarafnya sama
+       sepanjang program.
+
+       Tertulis 69, bukan 70, dan itu bukan salah ketik: angka ini adalah pusat
+       sebaran nilai per KOMPONEN, yang masing-masing masih digoyang
+       between(-6, 6) lalu dirata-ratakan menjadi nilai aspek, baru menjadi
+       nilai semester. Dengan benih acak yang dipakai di sini, 69 yang
+       mendaratkan rata-rata Semester 1 tepat di 70; 70 menghasilkan 71. Kalau
+       benihnya diubah, angka ini perlu dicari ulang. */
+    opsi: { tanpaMenunggu: true, basisSemester: { 1: 69 } },
   }),
   buatMahasiswa({
     id: 'DEMO-3',

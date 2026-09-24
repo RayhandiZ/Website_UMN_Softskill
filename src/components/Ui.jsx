@@ -84,6 +84,70 @@ export function HurufBadge({ nilai, sementara = false, panjang = false }) {
   )
 }
 
+/* --------------------------------------------------------------------------
+   Status aspek dalam TEKS SAJA.
+
+   Dulu ini lencana berwarna: hijau untuk Final, kuning untuk Sementara.
+   Aturan warna status sendiri sudah dipatuhi — selalu disertai ikon dan
+   tulisan, tidak pernah warna saja. Yang luput: ketika HAMPIR SETIAP BARIS
+   punya lencana berwarna, warnanya berhenti menandai apa pun. Sepuluh baris
+   dengan sepuluh pil hijau dan kuning bukan sepuluh peringatan; ia sepuluh
+   hiasan yang justru menutupi angka nilainya.
+
+   Sekarang statusnya kata biasa. Yang membedakan tingkatannya berat huruf,
+   bukan rona: yang sudah final tampil pekat, yang masih berjalan tampil lebih
+   ringan. Tidak ada satu pun warna dipakai, jadi pembaca yang tidak bisa
+   membedakan warna dan lembar yang tercetak hitam-putih membaca hal yang sama
+   persis.
+
+   Warna TIDAK dipakai, tetapi kontras tetap diukur: teks status adalah
+   informasi, bukan hiasan. Karena itu yang redup memakai ink-2 (6,89:1), bukan
+   ink-3 yang hanya 3,22:1 di mode terang dan gagal ambang 4,5:1.
+   -------------------------------------------------------------------------- */
+export function StatusTeks({ kuat = false, className = '', children }) {
+  return (
+    <span
+      className={
+        'whitespace-nowrap text-[12.5px] ' +
+        (kuat ? 'font-bold text-ink' : 'font-semibold text-ink-2') +
+        ' ' +
+        className
+      }
+    >
+      {children}
+    </span>
+  )
+}
+
+/* --------------------------------------------------------------------------
+   Penanda skema yang belum final: teks merah, tanpa pil.
+
+   Berbeda dari StatusTeks di atas yang sengaja tanpa warna. Status muncul di
+   HAMPIR SETIAP BARIS, jadi warnanya berhenti menandai apa pun. Penanda ini
+   kebalikannya: ia peringatan bahwa angkanya berdiri di atas skema penilaian
+   yang belum diresmikan, dan itu jarang. Yang jarang boleh berwarna.
+
+   Kurungnya disengaja. "(Draft)" terbaca sebagai catatan pinggir terhadap
+   kalimat di sebelahnya, sedangkan pil berwarna terbaca sebagai label yang
+   setara — padahal ini keterangan tentang label itu, bukan label lain.
+
+   Warnanya merah, bukan kuning. Kuning --warning hanya mencapai 1,83:1 di atas
+   kartu putih; sebagai pil berlatar tint ia masih terbaca, tetapi begitu
+   pilnya dilepas dan tinggal tulisannya, angka itu jadi gagal telak. Merah
+   --critical mencapai 4,80:1 di terang dan 6,18:1 di gelap.
+   -------------------------------------------------------------------------- */
+export function TandaDraft({ children, className = '' }) {
+  return (
+    <span
+      className={
+        'whitespace-nowrap text-[12px] font-bold text-[var(--critical)] ' + className
+      }
+    >
+      ({children})
+    </span>
+  )
+}
+
 /** Penanda aspek yang semesternya belum tiba (R2) — bentuk, bukan sekadar warna. */
 export function Terkunci({ semester, ringkas = false }) {
   const t = useTeks()

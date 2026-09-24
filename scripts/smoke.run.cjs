@@ -163,7 +163,7 @@ const RUTE = [
 ;(async () => {
   const bundle = require('./bundle.cjs')
   const mod = require(bundle('smoke.jsx', '.smoke.cjs', { platform: 'browser', format: 'cjs', loader: { '.jsx': 'jsx' }, jsx: 'automatic' }))
-  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, ujiAlurDosen, ujiBahasa, ujiSeretBahasa, ujiLayanan, ujiPanelLain, perAngkatan, BATAS_BARIS_ASPEK } = mod
+  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, ujiAlurDosen, ujiBahasa, ujiSeretBahasa, ujiLayanan, ujiPanelLain, ujiKamus, ujiOtomatis, ujiStatusPolos, ujiCetakTranskrip, ujiTandaDraft, ujiTrenSemester, ujiKurva, perAngkatan, BATAS_BARIS_ASPEK } = mod
   let gagal = 0
   for (const [peran, rute, nama] of RUTE) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
@@ -631,6 +631,130 @@ const RUTE = [
   gagal += rusakBahasa.length
   console.log((rusakBahasa.length ? 'GAGAL  ' : 'OK     ') + 'Pemilih bahasa')
   for (const [ket, ok] of cekBahasa) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ---------------------- Ketahanan pencarian kamus ------------------------ */
+  console.log('')
+  const km = await ujiKamus()
+  const cekKamus = [
+    ['kalimat satu baris ditemukan', km.menerjemahkan],
+    ['kalimat yang ditata ulang TETAP ditemukan', km.tahanTataUlang],
+    ['mode Indonesia tidak menyentuh kamus', km.indonesiaUtuh],
+    ['penanda {n} terisi di sisi Inggris', km.penandaTerisi],
+    ['kalimat tanpa padanan jatuh ke Indonesia', km.kosongJatuhKeIndonesia],
+    ['kamusnya memang terisi', km.kamusTidakKosong],
+  ]
+  const rusakKamus = cekKamus.filter(([, ok]) => !ok)
+  gagal += rusakKamus.length
+  console.log((rusakKamus.length ? 'GAGAL  ' : 'OK     ') + 'Ketahanan kamus terjemahan')
+  for (const [ket, ok] of cekKamus) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* ------------- Status polos & transkrip yang dicetak --------------------- */
+  console.log('')
+  w.localStorage.setItem('sk5c.session', SESI.student)
+  const sp = await ujiStatusPolos('/mahasiswa')
+  const st = await ujiStatusPolos('/mahasiswa/transkrip')
+  const ct = await ujiCetakTranskrip()
+  const cekPolos = [
+    ['dashboard: ada penanda status', sp.adaPenanda],
+    ['dashboard: tanpa warna status', sp.tanpaWarna],
+    ['dashboard: pembungkusnya pun tanpa warna', sp.pembungkusTanpaWarna],
+    ['dashboard: tanpa ikon, hanya teks', sp.tanpaIkon],
+    ['dashboard: katanya tetap terbaca', sp.tetapTerbaca],
+    ['transkrip: tanpa warna status', st.tanpaWarna],
+    ['transkrip: tanpa ikon, hanya teks', st.tanpaIkon],
+    ['transkrip: dua grafik tetap ada di layar', ct.grafikAda],
+    ['transkrip: grafik TIDAK ikut tercetak', ct.grafikTakTercetak],
+    ['transkrip: tabel nilai tetap tercetak', ct.tabelTercetak],
+    ['transkrip: kop dokumen tetap tercetak', ct.kopTercetak],
+    ['transkrip: kartu ajukan koreksi tidak tercetak', ct.ajukanTakTercetak],
+    ['cetak: ada tabel yang diperiksa', ct.adaTabel],
+    ['cetak: lebar minimum dilepas, tidak terpotong', ct.lebarDilepas],
+    ['cetak: wadah bergulir dibuat terlihat', ct.gulirDilepas],
+    ['cetak: lebar kolom tabel dikunci', ct.tabelTerkunci],
+  ]
+  const dp = await ujiTandaDraft('/mahasiswa/peta')
+  const dt = await ujiTandaDraft('/mahasiswa/transkrip')
+  cekPolos.push(
+    ['peta: ada penanda draft', dp.ada],
+    ['peta: berkurung, bukan pil', dp.berkurung && dp.tanpaPil],
+    ['peta: merah, bukan kuning', dp.merah],
+    ['peta: kuning tak terbaca sudah hilang', dp.tanpaKuningTakTerbaca],
+    ['transkrip: ada penanda draft', dt.ada],
+    ['transkrip: berkurung, bukan pil', dt.berkurung && dt.tanpaPil],
+    ['transkrip: kuning tak terbaca sudah hilang', dt.tanpaKuningTakTerbaca],
+  )
+
+  /* ------------- Grafik ringkas di kartu nilai akhir ----------------------- */
+  const tr3 = await ujiTrenSemester(3)
+  const tr2 = await ujiTrenSemester(2)
+  const tr1 = await ujiTrenSemester(1)
+  const cekTren = [
+    /* DEMO-3: tiga semester bernilai 80, 81, 82. */
+    ['tiga semester: tren yang tampil', tr3.adaTren && !tr3.adaSebaran],
+    ['satu titik per semester bernilai', tr3.jumlahTitik === 3],
+    ['satu jalur utuh, tanpa putus', tr3.jumlahJalur === 1],
+    ['dua ruas antar semester berurutan', tr3.jumlahRuas === 2],
+    ['jalurnya garis, bukan bidang terisi', tr3.takTerisi],
+    ['kurva tidak melampaui rentang datanya', tr3.takMelampaui],
+    ['tebal garis tidak ikut teregang', tr3.garisTakTeregang],
+    ['kenaikannya dinyatakan sebagai angka', tr3.ringkasNaik],
+    ['ada garis bantu horizontal', tr3.garisBantu >= 3],
+    ['tiap garis bantu punya labelnya', tr3.labelSecocokGaris],
+    ['label sumbu berupa kelipatan bulat', tr3.sumbuBulat],
+    ['jendela sumbu tidak lebih sempit dari 20', tr3.lebarJendela >= 20],
+    ['nama semester ditulis lengkap, termasuk yang terkunci', tr3.labelSemuaSemester],
+
+    /* DEMO-2: dua semester, 70 lalu 85. */
+    ['dua semester: kenaikannya dinyatakan', tr2.adaTren && tr2.ringkasNaik],
+    ['dua titik ditarik satu ruas lurus', tr2.jumlahRuas === 1],
+    ['semester terkunci tidak ikut digambar (R2)', tr2.jumlahTitik === 2],
+    ['nama semester ditulis lengkap', tr2.labelSemuaSemester],
+
+    /* DEMO-1: satu semester saja. Tren belum punya arti di sana. */
+    ['satu semester: berganti ke sebaran aspek', tr1.adaSebaran && !tr1.adaTren],
+  ]
+
+  /* Jaminan anti-lampauan, diuji pada fungsinya sendiri dengan deret yang
+     berbalik arah -- bentuk yang tidak dipunyai satu pun persona demo. */
+  const kv = ujiKurva()
+  cekTren.push(
+    ['kurva: puncak 86-85-86 tidak melampaui', kv.puncakAman],
+    ['kurva: lembah 65-65-62 tidak melampaui', kv.lembahAman],
+    ['kurva: lonjakan 40-95-42 tidak melampaui', kv.tajamAman],
+    ['kurva: deret menanjak tidak melampaui', kv.naikAman],
+    ['kurva: mendatar di titik balik', kv.balikMendatar],
+    ['kurva: jumlah ruasnya benar', kv.ruasBenar],
+    ['kurva: dua titik ditarik lurus', kv.duaTitikLurus],
+    ['kurva: nilai yang tidak berubah tergambar datar', kv.tetapTergambarDatar],
+    ['kurva: kurang dari dua titik tidak menggambar apa pun', kv.satuTitikKosong],
+  )
+  const rusakTren = cekTren.filter(([, ok]) => !ok)
+  gagal += rusakTren.length
+  console.log('')
+  console.log((rusakTren.length ? 'GAGAL  ' : 'OK     ') + 'Grafik ringkas nilai akhir')
+  for (const [ket, ok] of cekTren) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  const rusakPolos = cekPolos.filter(([, ok]) => !ok)
+  gagal += rusakPolos.length
+  console.log((rusakPolos.length ? 'GAGAL  ' : 'OK     ') + 'Status polos & lembar cetak')
+  for (const [ket, ok] of cekPolos) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  /* --------------------- Lapis terjemahan mesin ---------------------------- */
+  console.log('')
+  const ot = await ujiOtomatis()
+  const cekOtomatis = [
+    ['peramban tanpa penerjemah: diam, tidak rusak', ot.diamTanpaApi],
+    ['mesin dipanggil saat kamus tidak punya padanan', ot.mesinDipanggil],
+    ['hasilnya masuk singgahan', ot.hasilMasuk],
+    ['hasilnya dipakai terjemah()', ot.dipakaiTerjemah],
+    ['hasil yang kehilangan penanda DIBUANG', ot.penandaHilangDibuang],
+    ['kalimat itu jatuh ke Indonesia yang utuh', ot.jatuhKeIndonesia],
+    ['kamus manusia tetap menang atas mesin', ot.kamusMenang],
+  ]
+  const rusakOtomatis = cekOtomatis.filter(([, ok]) => !ok)
+  gagal += rusakOtomatis.length
+  console.log((rusakOtomatis.length ? 'GAGAL  ' : 'OK     ') + 'Terjemahan mesin sebagai jaring pengaman')
+  for (const [ket, ok] of cekOtomatis) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
 
   /* ------------- Bahasa & bantuan di panel admin dan dosen ---------------- */
   console.log('')

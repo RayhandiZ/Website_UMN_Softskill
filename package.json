@@ -13,7 +13,8 @@
     "assert": "node scripts/assert.run.cjs",
     "test:nilai": "node scripts/nilai.cjs",
     "test:profil": "node scripts/profil-test.mjs",
-    "test:bahasa": "node scripts/bahasa.mjs"
+    "test:bahasa": "node scripts/bahasa.mjs",
+    "bahasa:sync": "node scripts/bahasa.mjs --tulis"
   },
   "dependencies": {
     "next": "^16.3.5",

@@ -146,8 +146,7 @@ export default function NilaiDosen() {
             className="max-w-xl"
           />
           {komponen?.status === 'draft' ? (
-            <p className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--warning)]">
-              <IconAlert size={14} />
+            <p className="mt-3 text-[12.5px] font-bold text-[var(--critical)]">
               {t('Skema komponen ini belum final di kurikulum. Nilainya tetap bisa diusulkan.')}
             </p>
           ) : null}
@@ -342,7 +341,7 @@ function IsiManual({ galat, baris, bisa, cari, setCari, onKirim }) {
                   <td className="whitespace-nowrap px-4 py-3 align-middle text-[13px] tabular-nums text-ink-2">
                     {b.waktu}
                     {b.terlambat ? (
-                      <span className="mt-0.5 block text-[12px] font-bold text-[var(--warning)]">
+                      <span className="mt-0.5 block text-[12px] font-bold text-[var(--warning-ink)]">
                         {t('terlambat')}
                       </span>
                     ) : null}

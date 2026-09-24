@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { EN } from './teks'
+import { dumpOtomatis, hasilOtomatis, mintaTerjemahan, saatSelesai } from './terjemahOtomatis'
 
 /* --------------------------------------------------------------------------
    Dwibahasa Indonesia dan Inggris.
@@ -32,16 +33,79 @@ export const BAHASA = [
 
 const BahasaContext = createContext(null)
 
+
 /** Mengisi {penanda} dengan nilainya. */
 function isi(teks, nilai) {
   if (!nilai) return teks
   return String(teks).replace(/\{(\w+)\}/g, (utuh, k) => (k in nilai ? String(nilai[k]) : utuh))
 }
 
+/* --------------------------------------------------------------------------
+   Kunci dirapikan sebelum dicocokkan: spasi di ujung dibuang, dan deretan
+   spasi atau baris baru di tengah dipadatkan jadi satu spasi.
+
+   Ini bukan kerapian kosmetik, melainkan yang membuat kamus tidak gampang
+   putus. Kalimat panjang di JSX kerap ditulis memanjang beberapa baris dengan
+   indentasi, dan satu kali penataan ulang oleh penyunting kode sudah cukup
+   mengubah kuncinya tanpa satu huruf pun berbeda di layar. Tanpa perapian ini,
+   terjemahannya diam-diam berhenti ditemukan dan kalimatnya kembali ke bahasa
+   Indonesia, padahal tidak ada yang salah.
+   -------------------------------------------------------------------------- */
+export const rapikan = (teks) => String(teks ?? '').trim().replace(/\s+/g, ' ')
+
+const EN_RAPI = new Map(Object.entries(EN).map(([k, v]) => [rapikan(k), v]))
+
+/* Kunci yang sudah dilaporkan, supaya satu kalimat yang dirender ratusan kali
+   tidak membanjiri konsol dengan peringatan yang sama. */
+const sudahDilapor = new Set()
+
+/* --------------------------------------------------------------------------
+   Tiga lapis, dan urutannya yang menentukan segalanya.
+
+     1. KAMUS. Selalu menang. Di situlah istilah domain diputuskan manusia.
+     2. MESIN PERAMBAN. Hanya mengisi lubang: kalimat yang belum ada di kamus.
+        Jalan di Chromium baru, diam di peramban lain.
+     3. BAHASA INDONESIA apa adanya.
+
+   Mesin tidak pernah bisa menimpa lapis pertama. Itu bukan pembatasan teknis
+   melainkan keputusan: "Nilai sementara" harus terbaca "Provisional score",
+   dan mesin mana pun akan menebaknya "Temporary value".
+   -------------------------------------------------------------------------- */
 export function terjemah(bahasa, teks, nilai) {
-  const dasar = bahasa === 'en' ? (EN[teks] ?? teks) : teks
-  return isi(dasar, nilai)
+  if (bahasa !== 'en') return isi(teks, nilai)
+
+  /* Nilai kosong dianggap BELUM diterjemahkan, bukan "terjemahannya kosong".
+     Perintah bahasa:sync menuliskan kunci baru dengan nilai kosong supaya
+     tinggal diisi, dan selama itu kalimatnya harus tetap terbaca. */
+  const padanan = EN_RAPI.get(rapikan(teks))
+  if (padanan) return isi(padanan, nilai)
+
+  /* Lapis kedua: hasil mesin yang sudah pernah dihitung di sesi ini. */
+  const mesin = hasilOtomatis(teks)
+  if (mesin) return isi(mesin, nilai)
+
+  /* Belum ada: titipkan ke antrean. Pemanggilan ini tidak menunggu; hasilnya
+     datang belakangan dan memicu gambar ulang lewat saatSelesai(). */
+  if (OTOMATIS.aktif) mintaTerjemahan(teks)
+
+  /* Peringatan hanya saat pengembangan. Di layar pengguna, kalimat tanpa
+     padanan cukup jatuh ke bahasa Indonesia tanpa ribut. */
+  const pengembangan =
+    typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production'
+  if (pengembangan && teks && !sudahDilapor.has(teks)) {
+    sudahDilapor.add(teks)
+    console.warn(
+      '[bahasa] belum ada padanan Inggris untuk:\n  ' +
+        rapikan(teks) +
+        '\n  Jalankan: npm run bahasa:sync',
+    )
+  }
+  return isi(teks, nilai)
 }
+
+/* Saklar terjemahan mesin. Dipisahkan sebagai objek supaya uji bisa
+   mematikannya tanpa menyentuh modul lain. */
+export const OTOMATIS = { aktif: true }
 
 export function BahasaProvider({ children }) {
   /* Selalu mulai dari Indonesia, sama seperti yang dirender di server.
@@ -61,6 +125,11 @@ export function BahasaProvider({ children }) {
     } catch {
       /* penyimpanan diblokir — cukup di memori */
     }
+
+    /* Bawaannya tetap Indonesia, BUKAN bahasa peramban. Ini sistem internal
+       kampus Indonesia; banyak mahasiswanya menyetel peramban ke Inggris tanpa
+       bermaksud memakai aplikasi kampus dalam bahasa Inggris, dan menebak dari
+       situ akan menyambut mereka dengan bahasa yang tidak mereka minta. */
     setSiap(true)
   }, [])
 
@@ -102,7 +171,28 @@ export function BahasaProvider({ children }) {
     }
   }, [bahasa, siap])
 
-  const t = useCallback((teks, nilai) => terjemah(bahasa, teks, nilai), [bahasa])
+  /* Hasil mesin datang belakangan dan asinkron. Nomor ini naik setiap ada
+     hasil baru, dan itulah yang membuat halaman menggambar ulang dengan
+     kalimat yang tadinya masih berbahasa Indonesia. */
+  const [putaran, setPutaran] = useState(0)
+
+  useEffect(() => {
+    if (bahasa !== 'en') return
+    return saatSelesai(() => setPutaran((n) => n + 1))
+  }, [bahasa])
+
+  /* Pembantu konsol untuk menyalin draf mesin ke teks.js. Dipasang di window
+     supaya bisa dipanggil langsung dari alat pengembang peramban. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.dumpOtomatis = dumpOtomatis
+  }, [])
+
+  const t = useCallback(
+    (teks, nilai) => terjemah(bahasa, teks, nilai),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bahasa, putaran],
+  )
   const toggle = useCallback(() => setBahasa((b) => (b === 'id' ? 'en' : 'id')), [])
 
   const nilai = useMemo(() => ({ bahasa, setBahasa, toggle, t }), [bahasa, toggle, t])

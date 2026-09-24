@@ -4,6 +4,7 @@ import Penyedia from '../app/penyedia'
 import { RequireRole } from '../src/lib/auth'
 import { STUDENTS } from '../src/lib/mockData'
 import { aturJalur } from './palsu-next-navigation'
+import { jalurMulus } from '../src/lib/kurva'
 
 import Login from '../src/halaman/Login'
 import Profil from '../src/halaman/Profil'
@@ -214,7 +215,11 @@ export async function ujiRingkasHp(rute) {
   const wadah = el.querySelector('#ubin-rinci')
   const pelipat = el.querySelector('button[aria-controls="ubin-rinci"]')
   hasil.ubinTerlipatAwal = !!wadah && wadah.className.split(' ').includes('hidden')
-  hasil.tetapUtuhDiLayarLebar = !!wadah && wadah.className.includes('sm:contents')
+  /* Sejak nilai akhir dijadikan kartu besar tersendiri, ketiga ubin sisanya
+     menumpuk di kolom kanan — bukan lagi melebur ke grid induknya. Yang
+     dijaga tetap sama: di layar lebar ketiganya selalu tampil, tidak ikut
+     terlipat bersama tombol Rincian milik ponsel. */
+  hasil.tetapUtuhDiLayarLebar = !!wadah && wadah.className.split(' ').includes('sm:grid')
   await klik(pelipat)
   hasil.ubinTerbuka = !!wadah && wadah.className.split(' ').includes('grid') && pelipat.getAttribute('aria-expanded') === 'true'
   hasil.nilaiAkhirTetapDiLuar = !!el.querySelector('#ubin-rinci') && !el.querySelector('#ubin-rinci').textContent.includes('Nilai akhir')
@@ -711,6 +716,403 @@ export async function ujiLipatOverview() {
   hasil.halaman.tidakAdaYangTersembunyiSesudah = kartuTersembunyi() === 0
 
   lepas()
+  return hasil
+}
+
+/* --------------------------------------------------------------------------
+   Ketahanan pencarian kamus.
+
+   Yang dijaga di sini satu hal: kunci terjemahan tidak boleh putus hanya
+   karena kalimatnya ditata ulang. Kalimat panjang di JSX ditulis memanjang
+   beberapa baris dengan indentasi, dan satu kali penataan oleh penyunting kode
+   mengubah spasinya tanpa mengubah satu huruf pun di layar. Sebelum ada
+   perapian ini, kalimat seperti itu diam-diam kembali ke bahasa Indonesia
+   padahal terjemahannya ada.
+   -------------------------------------------------------------------------- */
+export async function ujiKamus() {
+  const { terjemah } = await import('../src/lib/bahasa')
+  const { EN } = await import('../src/lib/teks')
+
+  const satuBaris = 'Nilai akhir'
+  /* Persis bentuk yang dihasilkan JSX ketika kalimatnya ditata ulang menjadi
+     beberapa baris berindentasi. */
+  const banyakBaris = `
+            Nilai
+            akhir
+          `
+
+  return {
+    menerjemahkan: terjemah('en', satuBaris) === 'Final score',
+    tahanTataUlang: terjemah('en', banyakBaris) === 'Final score',
+    indonesiaUtuh: terjemah('id', satuBaris) === satuBaris,
+    penandaTerisi:
+      terjemah('en', 'Semester {n} dari {total}', { n: 2, total: 3 }) === 'Semester 2 of 3',
+    /* Nilai kosong berarti BELUM diterjemahkan, bukan "terjemahannya kosong".
+       Perintah bahasa:sync menulis kunci baru dengan nilai kosong. */
+    kosongJatuhKeIndonesia: terjemah('en', 'Kalimat karangan yang tidak ada di kamus') ===
+      'Kalimat karangan yang tidak ada di kamus',
+    kamusTidakKosong: Object.keys(EN).length > 400,
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Status aspek harus TEKS, bukan pil berwarna.
+
+   Aturan lama menyatakan warna status selalu ditemani ikon dan tulisan, dan
+   aturan itu memang dipatuhi. Yang luput: ketika hampir setiap baris punya
+   lencana berwarna, warnanya berhenti menandai apa pun dan justru menutupi
+   angka nilainya. Uji ini menjaga keputusan itu tidak pelan-pelan kembali.
+
+   Sekalian dijaga: grafik tidak ikut tercetak. Transkrip yang dicetak adalah
+   dokumen resmi berisi angka, bukan laporan analitik.
+   -------------------------------------------------------------------------- */
+const KATA_STATUS = ['Final', 'Sementara', 'Belum dinilai', 'Menunggu nilai', 'Terkunci']
+
+/* Kelas yang menandakan sebuah unsur memakai warna status. */
+const BERWARNA = /--good|--warning|--critical|--serious/
+
+/* Grafik dikeluarkan dari pemeriksaan. Gembok di dalam AspectBars adalah
+   keterangan legenda, bukan status satu baris nilai — dan grafiknya sendiri
+   sudah tidak ikut tercetak. Tanpa pengecualian ini, ujinya menuduh tempat
+   yang salah. */
+function bagianGrafik(el) {
+  return [...el.querySelectorAll('section')].filter((n) =>
+    /Profil enam cluster|Nilai per aspek CPMK/.test(n.textContent),
+  )
+}
+
+function penandaStatus(el) {
+  const grafik = bagianGrafik(el)
+  return [...el.querySelectorAll('span')].filter(
+    (n) =>
+      KATA_STATUS.includes(n.textContent.trim()) && !grafik.some((g) => g.contains(n)),
+  )
+}
+
+/* Grafik ringkas di kartu nilai akhir.
+
+   Diuji per persona karena bentuk datanya berbeda tajam, dan ketiganya harus
+   benar: DEMO-1 baru punya satu semester bernilai, DEMO-2 punya dua yang
+   nilainya sama persis, DEMO-3 punya tiga yang menanjak.
+
+   Tiga hal yang paling perlu dijaga di sini, karena ketiganya rusak tanpa
+   terlihat rusak:
+     - semester terkunci tidak pernah ikut digambar (R2);
+     - jendela sumbu Y tidak pernah lebih sempit daripada batasnya, karena
+       sumbu sempit adalah cara termudah membuat selisih satu angka tampak
+       seperti lompatan besar;
+     - kurvanya tidak pernah melampaui rentang datanya sendiri. Kurva mulus
+       biasa akan menyentuh 83 di antara 82 dan 82, dan angka itu tidak pernah
+       ada. Di sinilah lampauan itu diperiksa langsung dari koordinat jalurnya,
+       bukan dipercayai begitu saja. */
+
+/* Setiap bilangan genap-indeks di atribut d adalah x, ganjil-indeks adalah y --
+   berlaku untuk M, L, maupun C, karena ketiganya hanya berisi pasangan
+   koordinat. */
+function koordinatY(d) {
+  const angka = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+  return angka.filter((_, i) => i % 2 === 1)
+}
+
+/* Jaminan anti-lampauan, diuji langsung pada fungsinya.
+
+   Ini tidak bisa diuji lewat halaman: ketiga persona demo nilainya kebetulan
+   menanjak terus, dan pada deret menanjak spline biasa pun tidak melampaui.
+   Yang membedakan Fritsch-Carlson dari Catmull-Rom justru deret yang berbalik
+   arah -- 86, 85, 86 atau 65, 65, 62 -- jadi deret itulah yang dipakai di sini.
+
+   Kurva bezier kubik selalu termuat di dalam cangkang cembung keempat titik
+   kendalinya, jadi memeriksa ordinat keempatnya sudah cukup membuktikan
+   seluruh kurvanya tidak pernah keluar dari rentang data. */
+export function ujiKurva() {
+  const bangun = (nilai) => nilai.map((y, i) => ({ x: i * 40, y }))
+
+  const periksa = (nilai) => {
+    const d = jalurMulus(bangun(nilai))
+    const angka = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+    const y = angka.filter((_, i) => i % 2 === 1)
+    return {
+      d,
+      y,
+      /* Tiap titik kendali harus berada di dalam rentang dua titik data yang
+         mengapitnya. Dilonggarkan 0,01 untuk sisa pembulatan dua desimal. */
+      aman: y.every((v) => v >= Math.min(...nilai) - 0.01 && v <= Math.max(...nilai) + 0.01),
+      ruas: (d.match(/[CL]/g) ?? []).length,
+    }
+  }
+
+  const puncak = periksa([86, 85, 86])
+  const lembah = periksa([65, 65, 62])
+  const tajam = periksa([40, 95, 42])
+  const naik = periksa([80, 81, 82])
+  const dua = periksa([85, 85])
+
+  return {
+    /* Deret yang berbalik arah: inilah yang dilanggar spline biasa. */
+    puncakAman: puncak.aman,
+    lembahAman: lembah.aman,
+    /* Lonjakan ekstrem, tempat pembatas kemiringannya paling bekerja keras. */
+    tajamAman: tajam.aman,
+    naikAman: naik.aman,
+    /* Di titik balik kemiringannya dipaksa nol, jadi kurvanya MENDATAR di sana
+       alih-alih menyeberang. Buktinya: titik kendali di kedua sisi lembah 85
+       harus persis setinggi 85 juga. Urutan ordinat pada dua ruas bezier
+       adalah [awal, kendali1, kendali2, ujung, kendali1, kendali2, ujung],
+       jadi yang mengapit ujung ruas pertama ada di indeks 2 dan 4. */
+    balikMendatar: puncak.y[2] === 85 && puncak.y[4] === 85,
+    ruasBenar: puncak.ruas === 2 && dua.ruas === 1,
+    /* Dua titik ditarik lurus, tidak perlu bezier. */
+    duaTitikLurus: dua.d.includes('L') && !dua.d.includes('C'),
+    /* Nilai yang tidak berubah harus tergambar benar-benar datar. Dulu ini
+       terjaga lewat persona DEMO-2, sampai nilainya diubah supaya trennya
+       menanjak; sejak itu tidak ada satu pun persona yang datar, jadi
+       jaminannya dipindahkan ke sini. */
+    tetapTergambarDatar: dua.y.length > 0 && dua.y.every((v) => v === 85),
+    /* Kurang dari dua titik bukan garis apa pun. */
+    satuTitikKosong: jalurMulus([{ x: 0, y: 5 }]) === '' && jalurMulus([]) === '',
+  }
+}
+
+export async function ujiTrenSemester(sem) {
+  window.history.replaceState({}, '', '/?sem=' + sem)
+  const { el, lepas } = await pasang('/mahasiswa')
+
+  const judul = el.textContent
+  const grafik = el.querySelector('[role="img"]')
+  const svg = grafik ? grafik.querySelector('svg') : null
+
+  /* Titiknya span HTML mutlak di dalam bidang, bukan <circle>. */
+  const titik = grafik
+    ? [...grafik.querySelectorAll('span[style*="left"]')].filter((n) =>
+        /rounded-full/.test(n.className),
+      )
+    : []
+
+  const jalur = svg ? [...svg.querySelectorAll('path')] : []
+  const d = jalur.map((n) => n.getAttribute('d') ?? '').join(' ')
+  const y = jalur.flatMap((n) => koordinatY(n.getAttribute('d') ?? ''))
+
+  /* Ordinat tiap titik data, dibaca dari gaya inlinenya. Dipakai sebagai
+     pembanding: kurva tidak boleh keluar dari rentang ini. */
+  const yTitik = titik
+    .map((n) => parseFloat(String(n.getAttribute('style')).match(/top:\s*([\d.]+)%/)?.[1]))
+    .filter(Number.isFinite)
+
+  /* Garis bantu horizontal: <line> tanpa strokeDasharray. Garis ambang punya
+     dasharray, jadi tidak ikut terhitung. */
+  const bantu = svg
+    ? [...svg.querySelectorAll('line')].filter((n) => !n.getAttribute('stroke-dasharray'))
+    : []
+
+  /* Dibaca dari lajur sumbunya sendiri, bukan dari seluruh halaman. Kalau
+     disapu dari mana saja, angka bertabular-nums milik bagian lain ikut
+     terhitung dan pemeriksaan "tiap garis bantu punya labelnya" berubah jadi
+     kebetulan belaka. */
+  const lajurSumbu = grafik ? grafik.previousElementSibling : null
+  const sumbu = lajurSumbu
+    ? [...lajurSumbu.querySelectorAll('span')]
+        .map((n) => Number(n.textContent))
+        .filter((n) => Number.isFinite(n))
+    : []
+
+  /* Baris nama semester duduk tepat setelah bidang gambarnya. Disasar begitu,
+     bukan lewat seluruh halaman: "Semester 1" juga muncul di kartu Perjalanan
+     Semester di bawah, dan tanpa penyasaran ini pemeriksaannya akan tetap
+     lulus meskipun label di grafiknya hilang sama sekali. */
+  const barisLabel = grafik ? grafik.parentElement.nextElementSibling : null
+  const namaSemester = barisLabel
+    ? [...barisLabel.querySelectorAll('span')].map((n) => n.textContent)
+    : []
+
+  const hasil = {
+    adaTren: /Nilai per semester/.test(judul),
+    adaSebaran: /Sebaran nilai aspek/.test(judul),
+    jumlahTitik: titik.length,
+    jumlahJalur: jalur.length,
+    /* Satu ruas per pasangan semester berurutan: C untuk kurva, L untuk dua
+       titik yang tidak perlu dilengkungkan. */
+    jumlahRuas: (d.match(/[CL]/g) ?? []).length,
+    /* Tebal garis tidak boleh ikut teregang oleh preserveAspectRatio="none". */
+    garisTakTeregang: jalur.every((n) => n.getAttribute('vector-effect') === 'non-scaling-stroke'),
+    /* Kurva yang tidak diisi. Path ber-fill akan jadi bidang gelap, bukan garis. */
+    takTerisi: jalur.every((n) => n.getAttribute('fill') === 'none'),
+    datar: y.length > 0 && y.every((v) => Math.abs(v - y[0]) < 0.01),
+    /* INTI PEMERIKSAANNYA. Sumbu Y terbalik (0 di atas), jadi "melampaui"
+       berarti ada koordinat jalur di luar rentang ordinat titik datanya. */
+    takMelampaui:
+      yTitik.length > 0 &&
+      y.every((v) => v >= Math.min(...yTitik) - 0.01 && v <= Math.max(...yTitik) + 0.01),
+    garisBantu: bantu.length,
+    /* Label sumbu harus sama banyak dengan garis bantunya, kalau tidak ada
+       garis yang tidak punya angka -- dan garis tanpa angka tidak bisa dibaca. */
+    labelSecocokGaris: bantu.length > 0 && sumbu.length === bantu.length,
+    ringkasTetap: /Tetap sejak Semester/.test(judul),
+    ringkasNaik: /Naik \d+ sejak Semester/.test(judul),
+    /* Ditulis lengkap, bukan disingkat. */
+    labelSemuaSemester:
+      namaSemester.length === 3 &&
+      ['Semester 1', 'Semester 2', 'Semester 3'].every((s) => namaSemester.includes(s)),
+    sumbuTertulis: sumbu.length > 0,
+    lebarJendela: sumbu.length >= 2 ? Math.max(...sumbu) - Math.min(...sumbu) : null,
+    /* Label sumbu harus kelipatan yang enak dibaca, bukan pecahan. */
+    sumbuBulat: sumbu.every((v) => Number.isInteger(v)),
+  }
+
+  lepas()
+  window.history.replaceState({}, '', '/')
+  return hasil
+}
+
+export async function ujiStatusPolos(rute) {
+  const { el, lepas } = await pasang(rute)
+  const penanda = penandaStatus(el)
+
+  const hasil = {
+    adaPenanda: penanda.length > 0,
+    /* Tidak satu pun boleh memakai warna status... */
+    tanpaWarna: penanda.every((n) => !BERWARNA.test(n.className)),
+    /* ...maupun mewarisi warnanya dari pembungkus terdekat. */
+    pembungkusTanpaWarna: penanda.every(
+      (n) => !BERWARNA.test(n.parentElement?.className ?? ''),
+    ),
+    /* Tanpa ikon: "hanya teks saja". */
+    tanpaIkon: penanda.every((n) => !n.querySelector('svg')),
+    /* Kata statusnya tetap terbaca — menghapus warna tidak boleh ikut
+       menghapus keterangannya. */
+    tetapTerbaca: /Final/.test(el.textContent) || /Sementara/.test(el.textContent),
+  }
+
+  lepas()
+  return hasil
+}
+
+/* --------------------------------------------------------------------------
+   Penanda skema draft: teks merah berkurung, TANPA pil.
+
+   Kebalikan dari status. Status muncul di hampir setiap baris sehingga
+   warnanya berhenti menandai apa pun; penanda ini jarang, dan yang jarang
+   boleh berwarna. Yang dijaga: warnanya dipakai pada TULISANNYA, bukan sebagai
+   isian pil, dan warnanya merah — bukan kuning yang hanya 1,83:1 di atas kartu
+   putih.
+   -------------------------------------------------------------------------- */
+export async function ujiTandaDraft(rute) {
+  const { el, lepas } = await pasang(rute)
+
+  const tanda = [...el.querySelectorAll('span')].filter((n) =>
+    /^\((Draft|Skema belum final)\)$/.test(n.textContent.trim()),
+  )
+
+  const hasil = {
+    ada: tanda.length > 0,
+    berkurung: tanda.every((n) => n.textContent.trim().startsWith('(')),
+    merah: tanda.every((n) => n.className.includes('--critical')),
+    /* Tidak boleh ada isian pil: kelas latar berwarna apa pun. */
+    tanpaPil: tanda.every((n) => !/bg-\[|bg-brand-soft|bg-surface-2/.test(n.className)),
+    /* Kuning yang gagal ambang tidak boleh kembali. */
+    tanpaKuningTakTerbaca: !/text-\[var\(--warning\)\]/.test(el.innerHTML),
+  }
+
+  lepas()
+  return hasil
+}
+
+export async function ujiCetakTranskrip() {
+  const { el, lepas } = await pasang('/mahasiswa/transkrip')
+
+  const bingkai = bagianGrafik(el)
+  const wadahGrafik = bingkai[0]?.parentElement
+
+  /* ------------------------------------------------------------------------
+     Tidak ada yang boleh terpotong di kertas.
+
+     A4 potret bermargin 14mm hanya menyisakan sekitar 688 px. Tabel di layar
+     dirancang selebar 820 px dan digulir mendatar; di kertas tidak ada yang
+     bisa digulir, jadi kolom terakhir hilang tanpa sisa. Uji ini memastikan
+     setiap lebar minimum dan setiap wadah bergulir punya pasangan print:-nya.
+     ------------------------------------------------------------------------ */
+  const lebarPaksa = [...el.querySelectorAll('[class*="min-w-["]')]
+  const wadahGulir = [...el.querySelectorAll('.overflow-x-auto')]
+
+  const hasil = {
+    grafikAda: bingkai.length === 2,
+    /* Tiap lebar minimum harus dilepas saat mencetak. */
+    lebarDilepas: lebarPaksa.every((n) => n.className.includes('print:min-w-0')),
+    /* Tiap wadah bergulir harus dibuat terlihat saat mencetak. */
+    gulirDilepas: wadahGulir.every((n) => n.className.includes('print:overflow-visible')),
+    /* Tabel dikunci lebarnya supaya tidak ada kolom yang memuai keluar. */
+    tabelTerkunci: [...el.querySelectorAll('table')].every((n) =>
+      n.className.includes('print:table-fixed'),
+    ),
+    adaTabel: el.querySelectorAll('table').length > 0,
+    grafikTakTercetak: Boolean(wadahGrafik && wadahGrafik.className.includes('print:hidden')),
+    /* Yang WAJIB tetap tercetak. */
+    tabelTercetak: /Rincian capaian per semester/.test(el.textContent),
+    kopTercetak: /Transkrip Capaian Softskill/.test(el.textContent),
+    ajukanTakTercetak: [...el.querySelectorAll('section')].some(
+      (n) =>
+        /Ada nilai yang menurutmu keliru/.test(n.textContent) &&
+        n.className.includes('print:hidden'),
+    ),
+  }
+
+  lepas()
+  return hasil
+}
+
+/* --------------------------------------------------------------------------
+   Lapis terjemahan mesin.
+
+   Yang diuji BUKAN mutu terjemahannya — itu urusan perambannya — melainkan
+   tiga janji yang dibuat lapis ini:
+
+     - Peramban tanpa penerjemah bawaan tidak boleh rusak, cuma diam.
+     - Kamus buatan manusia tidak boleh pernah ditimpa mesin.
+     - Kalimat yang kehilangan penanda {n} harus DIBUANG, bukan ditampilkan.
+       Kalimat Inggris yang kehilangan angkanya lebih buruk daripada kalimat
+       Indonesia yang utuh.
+   -------------------------------------------------------------------------- */
+export async function ujiOtomatis() {
+  const { terjemah } = await import('../src/lib/bahasa')
+  const { mintaTerjemahan, hasilOtomatis } = await import('../src/lib/terjemahOtomatis')
+
+  const hasil = {}
+
+  /* 1. Tanpa antarmuka penerjemah, tidak boleh ada yang meledak. */
+  const asing = 'Kalimat yang sengaja tidak ada di kamus mana pun'
+  hasil.diamTanpaApi = terjemah('en', asing) === asing
+
+  /* 2. Penerjemah tiruan: membalik kalimat menjadi huruf besar, dan sengaja
+     MEMBUANG penanda supaya penjaganya ikut teruji. */
+  const dipanggil = []
+  globalThis.Translator = {
+    availability: async () => 'available',
+    create: async () => ({
+      translate: async (teks) => {
+        dipanggil.push(teks)
+        return teks.toUpperCase().replace(/\{\w+\}/g, '')
+      },
+    }),
+  }
+
+  const tanpaPenanda = 'Kalimat uji tanpa penanda apa pun'
+  mintaTerjemahan(tanpaPenanda)
+  const berpenanda = 'Kalimat uji dengan {n} penanda'
+  mintaTerjemahan(berpenanda)
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 60))
+  })
+
+  hasil.mesinDipanggil = dipanggil.length === 2
+  hasil.hasilMasuk = hasilOtomatis(tanpaPenanda) === tanpaPenanda.toUpperCase()
+  hasil.dipakaiTerjemah = terjemah('en', tanpaPenanda) === tanpaPenanda.toUpperCase()
+  /* Penanda hilang -> hasilnya dibuang, kalimatnya tetap Indonesia. */
+  hasil.penandaHilangDibuang = hasilOtomatis(berpenanda) === undefined
+  hasil.jatuhKeIndonesia = terjemah('en', berpenanda, { n: 3 }) === 'Kalimat uji dengan 3 penanda'
+
+  /* 3. Kamus manusia tetap menang walau mesinnya hidup. */
+  hasil.kamusMenang = terjemah('en', 'Nilai akhir') === 'Final score'
+
+  delete globalThis.Translator
   return hasil
 }
 

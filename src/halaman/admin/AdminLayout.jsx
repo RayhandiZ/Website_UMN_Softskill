@@ -29,7 +29,10 @@ const PINTASAN = [
 const NAV = [
   { to: '/admin', label: 'Dashboard', end: true },
   { to: '/admin/mahasiswa', label: 'Mahasiswa' },
-  { to: '/admin/nilai', label: 'Nilai' },
+  /* 'Penilaian', bukan 'Nilai': kata 'Nilai' sudah dipakai sebagai kepala
+     kolom tabel yang berarti satu angka, sedangkan menu ini berarti seluruh
+     pekerjaan menilai. Satu kunci kamus tidak bisa melayani dua arti. */
+  { to: '/admin/nilai', label: 'Penilaian' },
   { to: '/admin/angkatan', label: 'Angkatan' },
 ]
 

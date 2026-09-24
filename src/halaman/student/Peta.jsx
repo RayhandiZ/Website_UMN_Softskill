@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
-import { Badge, Terkunci } from '../../components/Ui'
+import { StatusTeks, TandaDraft, Terkunci } from '../../components/Ui'
 import { IconCheck, IconChevronDown, IconChevronRight, IconClock, IconLock } from '../../components/Icons'
 import { CONFIG } from '../../lib/config'
 import { SUMBER, SUMBER_LIST, getCluster } from '../../lib/curriculum'
@@ -41,21 +41,12 @@ const RINGKAS_KEADAAN = {
    membedakan status, jadi labelnya selalu ikut. */
 function StatusSingkat({ a }) {
   const t = useTeks()
-  if (a.status === 'final') {
-    return (
-      <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--good)]">
-        <IconCheck size={13} />
-        {t('Final')}
-      </span>
-    )
-  }
+  if (a.status === 'final') return <StatusTeks kuat>{t('Final')}</StatusTeks>
+  /* Gembok di sini bukan hiasan status: ia menandai semester yang memang belum
+     dibuka, bukan pekerjaan yang belum selesai. Tidak berwarna, jadi tetap
+     sejalan dengan teks status di sebelahnya. */
   if (a.status === 'terkunci') return <Terkunci semester={a.aspek.semester} />
-  return (
-    <span className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-ink-2">
-      <IconClock size={13} />
-      {t(a.status === 'menunggu' ? 'Belum dinilai' : 'Sementara')}
-    </span>
-  )
+  return <StatusTeks>{t(a.status === 'menunggu' ? 'Belum dinilai' : 'Sementara')}</StatusTeks>
 }
 
 /* Satu jalur kegiatan (PDP / MK Humaniora / Kemahasiswaan) dalam satu semester. */
@@ -96,7 +87,7 @@ function Jalur({ sumber, nama, kegiatan, terkunci }) {
                   <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-bold text-ink-2">
                     {aspek.kode}
                   </span>
-                  {k.status === 'draft' ? <Badge tone="warning">draft</Badge> : null}
+                  {k.status === 'draft' ? <TandaDraft>{t('Draft')}</TandaDraft> : null}
                 </span>
               </span>
               <span className="shrink-0 text-[14px]">

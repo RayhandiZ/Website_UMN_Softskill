@@ -1,14 +1,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
-import { Badge, HurufBadge, ScoreBar, Terkunci } from '../../components/Ui'
+import { HurufBadge, ScoreBar, StatusTeks, Terkunci } from '../../components/Ui'
 import {
-  IconCertificate,
   IconCheck,
   IconChevronDown,
   IconChevronRight,
-  IconClock,
   IconDocument,
-  IconGauge,
   IconLock,
 } from '../../components/Icons'
 import { CONFIG } from '../../lib/config'
@@ -18,6 +15,7 @@ import { PERIODE_AKTIF, labelPeriode, transkripOf } from '../../lib/mockData'
 import { useStudent } from './StudentLayout'
 import { useStore } from '../../lib/store'
 import { useTeks } from '../../lib/bahasa'
+import { jalurMulus } from '../../lib/kurva'
 
 /* --------------------------------------------------------------------------
    Dashboard mahasiswa.
@@ -43,29 +41,385 @@ const sapaan = () => {
   return 'Selamat malam'
 }
 
-const NADA_IKON = {
-  brand: 'bg-brand-soft text-brand-ink',
-  good: 'bg-[color-mix(in_srgb,var(--good)_14%,transparent)] text-[var(--good)]',
-  warning:
-    'bg-[color-mix(in_srgb,var(--warning)_22%,transparent)] text-[color-mix(in_srgb,var(--warning)_70%,var(--text-primary))]',
-}
-
 /* --------------------------------- ubin ----------------------------------- */
 
-function Ubin({ ikon: Ikon, nada = 'brand', judul, ke, children }) {
+/* --------------------------------------------------------------------------
+   Sebaran nilai aspek — grafik mini di dalam kartu nilai akhir.
+
+   KENAPA TITIK PADA JALUR, BUKAN BATANG. Nilai sepuluh aspek seorang mahasiswa
+   biasanya berdekatan: contohnya 84 sampai 87. Sebagai batang setinggi 40 px
+   dengan dasar nol, selisih 3 angka itu menjadi selisih SATU PIKSEL — grafik
+   yang tidak menunjukkan apa pun, dan lebih buruk daripada tidak ada grafik
+   karena ia mengaku menunjukkan sesuatu.
+
+   Posisi pada jalur mendatar punya resolusi jauh lebih besar: pada jalur
+   selebar 400 px, satu angka bernilai 4 px, sehingga 84 dan 87 terpisah 12 px
+   dan terbaca. Dan yang terpenting, skalanya TETAP 0 sampai 100 — tidak ada
+   dasar yang dipotong demi membesar-besarkan selisih.
+
+   Yang ditampilkan di sini sengaja belum ada di tempat lain pada halaman ini.
+   Rata-rata per area sudah punya kartunya sendiri di bawah, begitu pula nilai
+   per semester di kolom kanan; mengulangnya di sini hanya akan memenuhi ruang
+   tanpa menambah keterangan.
+   -------------------------------------------------------------------------- */
+function SebaranAspek({ t }) {
+  const teks = useTeks()
+  const dinilai = t.aspek.filter((a) => a.nilai != null)
+  if (dinilai.length < 2) return null
+
+  const angka = dinilai.map((a) => a.nilai)
+  const rendah = Math.min(...angka)
+  const tinggi = Math.max(...angka)
+  const terkunci = t.aspek.filter((a) => a.terkunci).length
+
+  return (
+    <div>
+      <p className="flex items-baseline justify-between gap-3">
+        <span className="text-[13px] font-semibold text-ink-2">{teks('Sebaran nilai aspek')}</span>
+        <span className="shrink-0 text-[13px] font-bold tabular-nums text-ink">
+          {rendah === tinggi ? rendah : rendah + '–' + tinggi}
+        </span>
+      </p>
+
+      <div
+        role="img"
+        aria-label={teks('Sebaran nilai {n} aspek pada skala 0 sampai 100, terendah {rendah}, tertinggi {tinggi}', {
+          n: dinilai.length,
+          rendah,
+          tinggi,
+        })}
+        className="relative mt-3 h-10 rounded-xl bg-[var(--grid)]"
+      >
+        {/* Ambang kelulusan. Tanpa penanda ini, sebaran nilai tidak punya
+            acuan apa pun: 84 itu bagus atau pas-pasan tidak bisa dijawab. */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-1 w-px bg-ink-2"
+          style={{ left: CONFIG.AMBANG_SERTIFIKAT + '%' }}
+        />
+
+        {dinilai.map((a) => (
+          <span
+            key={a.aspekId}
+            title={a.aspek.kode + ' ' + a.aspek.nama + ' — ' + a.nilai}
+            /* SATU WARNA, BUKAN PER AREA. Titik selebar 10 px tidak bisa
+               dipakai membaca identitas: tidak ada seorang pun yang bisa
+               menunjuk titik mana milik aspek mana, jadi mewarnainya per area
+               hanya menambah tiga warna tanpa menambah satu keterangan pun.
+               Yang membawa arti di sini adalah POSISI titiknya.
+
+               Warna area juga gagal diukur: di atas jalur terang, oranye area
+               kedua hanya 2,76:1 dan hijau area ketiga 2,43:1 — keduanya di
+               bawah ambang 3:1 untuk unsur grafis. Warna tunggal ini 8,56:1.
+
+               Cincin sewarna latar memisahkan titik-titik yang bertumpuk; dua
+               aspek bernilai sama akan mendarat di titik yang persis sama
+               tanpa itu. */
+            className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-ink ring-2 ring-[var(--surface)]"
+            style={{ left: a.nilai + '%' }}
+          />
+        ))}
+      </div>
+
+      <p className="mt-2 flex items-baseline justify-between gap-3 text-[11.5px] text-ink-3">
+        <span className="tabular-nums">0</span>
+        <span className="min-w-0 truncate text-center">
+          {teks('{n} aspek dinilai', { n: dinilai.length })}
+          {terkunci ? ' · ' + teks('{n} belum dibuka', { n: terkunci }) : ''}
+          {' · '}
+          {teks('ambang {n}', { n: CONFIG.AMBANG_SERTIFIKAT })}
+        </span>
+        <span className="tabular-nums">100</span>
+      </p>
+    </div>
+  )
+}
+
+/* --------------------------------------------------------------------------
+   Tren nilai per semester.
+
+   Ini pertanyaan yang lebih berguna daripada sebaran aspek: bukan "nilai saya
+   tersebar di mana", tapi "saya membaik atau tidak". Sumbu waktu adalah satu-
+   satunya sumbu yang punya urutan alami di data ini, jadi garis adalah bentuk
+   yang tepat untuknya.
+
+   SUMBU Y DIPOTONG, DAN ITU SENGAJA -- TAPI DILABELI. Nilai satu mahasiswa
+   antar semester biasanya bergerak 1 sampai 3 angka. Pada sumbu 0-100 gerakan
+   itu jadi garis lurus sempurna, dan grafik yang selalu lurus tidak berguna.
+   Maka jendelanya dipersempit. Bahayanya jelas: mempersempit tanpa batas
+   membuat selisih 1 angka tampak seperti tebing. Penjaganya ada dua, dan
+   keduanya wajib:
+
+     1. LEBAR JENDELA MINIMUM 20 ANGKA. Kenaikan 2 angka menempati sepersepuluh
+        tinggi grafik, bukan seluruhnya. Mahasiswa yang nilainya tetap akan
+        melihat garis yang benar-benar datar, karena memang begitulah adanya.
+     2. UJUNG SUMBU SELALU DITULIS. Angka di kiri atas dan kiri bawah membuat
+        pembaca tahu grafik ini tidak dimulai dari nol. Sumbu terpotong tanpa
+        label itulah yang menipu, bukan sumbu terpotongnya sendiri.
+
+   Semester yang belum dibuka tidak digambar sebagai nol dan garisnya tidak
+   diteruskan ke sana (R2) -- hanya nama semesternya yang tampil, diredupkan.
+   -------------------------------------------------------------------------- */
+
+/* Lebar jendela sumbu Y paling sempit yang diizinkan, dalam satuan nilai. */
+const JENDELA_MIN = 20
+
+/* Tinggi bidang gambar dalam piksel. Dipakai dua kali: oleh bidangnya sendiri
+   dan oleh lajur label sumbu Y di sebelahnya, yang harus setinggi itu persis
+   supaya tiap label duduk tepat pada garis bantunya. */
+const TINGGI_BAGAN = 116
+
+/* Jarak antar garis bantu. Dipilih dari kelipatan yang enak dibaca, bukan dari
+   rentang datanya langsung: sumbu yang berlabel 70, 75, 80 jauh lebih cepat
+   dibaca daripada 71, 78,3, 85,6 meskipun keduanya sama benarnya. Yang dicari
+   adalah kelipatan terkecil yang menghasilkan paling banyak lima petak. */
+function pilihLangkah(bawahKasar, atasKasar) {
+  for (const langkah of [1, 2, 5, 10, 20, 25, 50]) {
+    const b = Math.floor(bawahKasar / langkah) * langkah
+    const a = Math.ceil(atasKasar / langkah) * langkah
+    if ((a - b) / langkah <= 5) return langkah
+  }
+  return 50
+}
+
+function TrenSemester({ t }) {
+  const teks = useTeks()
+  const daftar = Object.values(t.semester)
+  const dinilai = daftar.filter((s) => s.nilai != null)
+
+  const angka = dinilai.map((s) => s.nilai)
+  const rendah = Math.min(...angka)
+  const tinggi = Math.max(...angka)
+
+  let bawahKasar = rendah - 4
+  let atasKasar = tinggi + 4
+  if (atasKasar - bawahKasar < JENDELA_MIN) {
+    const tengah = (rendah + tinggi) / 2
+    bawahKasar = tengah - JENDELA_MIN / 2
+    atasKasar = tengah + JENDELA_MIN / 2
+  }
+  /* Digeser, bukan dipotong, supaya lebar jendelanya tidak menyusut di dekat
+     ujung skala: nilai 96 tetap dibaca pada jendela selebar 20 angka. */
+  if (bawahKasar < 0) {
+    atasKasar -= bawahKasar
+    bawahKasar = 0
+  }
+  if (atasKasar > 100) {
+    bawahKasar -= atasKasar - 100
+    atasKasar = 100
+  }
+
+  const langkah = pilihLangkah(bawahKasar, atasKasar)
+  const bawah = Math.max(0, Math.floor(bawahKasar / langkah) * langkah)
+  const atas = Math.min(100, Math.ceil(atasKasar / langkah) * langkah)
+
+  const garisBantu = []
+  for (let v = bawah; v <= atas; v += langkah) garisBantu.push(v)
+
+  /* Koordinat dalam persen; SVG-nya memakai viewBox 0 0 100 100 dengan
+     preserveAspectRatio="none" supaya ikut melebar mengikuti kartu.
+
+     Sumbu Y TIDAK diberi sisa tepi: garis bantu teratas dan terbawah memang
+     harus menempel di tepi bidang, seperti sumbu pada umumnya. Titik datanya
+     tetap aman karena jendelanya sudah dibulatkan keluar lebih dulu, jadi
+     tidak ada nilai yang persis jatuh di tepi. */
+  const n = daftar.length
+  const px = (sem) => (n === 1 ? 50 : 4 + ((sem - 1) / (n - 1)) * 92)
+  const py = (nilai) => ((atas - nilai) / (atas - bawah)) * 100
+
+  const titik = dinilai.map((sem) => ({ sem, x: px(sem.semester), y: py(sem.nilai) }))
+
+  /* Kurva hanya ditarik melintasi semester yang BERURUTAN. Kalau ada semester
+     tanpa nilai di tengah, kurvanya diputus jadi dua, bukan dilompati --
+     melompatinya berarti mengarang perubahan yang datanya tidak menyatakan. */
+  const runtun = []
+  for (const k of titik) {
+    const terakhir = runtun[runtun.length - 1]
+    if (terakhir && k.sem.semester === terakhir[terakhir.length - 1].sem.semester + 1) terakhir.push(k)
+    else runtun.push([k])
+  }
+
+  const mulai = dinilai[0]
+  const kini = dinilai[dinilai.length - 1]
+  const selisih = kini.nilai - mulai.nilai
+  const ringkas =
+    selisih === 0
+      ? teks('Tetap sejak Semester {n}', { n: mulai.semester })
+      : selisih > 0
+        ? teks('Naik {d} sejak Semester {n}', { d: selisih, n: mulai.semester })
+        : teks('Turun {d} sejak Semester {n}', { d: -selisih, n: mulai.semester })
+
+  const ambang = CONFIG.AMBANG_SERTIFIKAT
+  const ambangTampil = ambang > bawah && ambang < atas
+
+  return (
+    <div>
+      <p className="flex items-baseline justify-between gap-3">
+        <span className="text-[13px] font-semibold text-ink-2">{teks('Nilai per semester')}</span>
+        <span className="shrink-0 text-[12.5px] font-bold text-ink-2">{ringkas}</span>
+      </p>
+
+      <div className="mt-3 flex gap-2">
+        {/* Label sumbu Y, satu di tiap garis bantu. Selain memberi acuan baca,
+            angka-angka inilah yang menyatakan bahwa sumbunya TIDAK mulai dari
+            nol. Sumbu terpotong yang tidak dilabeli itulah yang menyesatkan. */}
+        <div className="relative w-[26px] shrink-0" style={{ height: TINGGI_BAGAN }}>
+          {garisBantu.map((v) => (
+            <span
+              key={v}
+              className="absolute right-0 -translate-y-1/2 text-[10.5px] font-semibold tabular-nums text-ink-3"
+              style={{ top: py(v) + '%' }}
+            >
+              {v}
+            </span>
+          ))}
+        </div>
+
+        <div
+          role="img"
+          aria-label={teks(
+            'Grafik nilai per semester, Semester {a} sebesar {na} sampai Semester {b} sebesar {nb}. {ringkas}',
+            { a: mulai.semester, na: mulai.nilai, b: kini.semester, nb: kini.nilai, ringkas },
+          )}
+          className="relative min-w-0 flex-1"
+          style={{ height: TINGGI_BAGAN }}
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="absolute inset-0 h-full w-full overflow-visible"
+          >
+            {garisBantu.map((v) => (
+              <line
+                key={v}
+                x1="0"
+                x2="100"
+                y1={py(v)}
+                y2={py(v)}
+                stroke={v === bawah ? 'var(--border-strong)' : 'var(--border)'}
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+
+            {ambangTampil ? (
+              <line
+                x1="0"
+                x2="100"
+                y1={py(ambang)}
+                y2={py(ambang)}
+                stroke="var(--text-secondary)"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
+
+            {runtun.map((deret) =>
+              deret.length < 2 ? null : (
+                <path
+                  key={deret[0].sem.semester}
+                  d={jalurMulus(deret)}
+                  fill="none"
+                  stroke="var(--brand-ink)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  /* Tanpa ini, preserveAspectRatio="none" ikut meregangkan
+                     tebal garisnya: tipis saat melintang, tebal saat menanjak. */
+                  vectorEffect="non-scaling-stroke"
+                />
+              ),
+            )}
+          </svg>
+
+          {/* Titiknya HTML, bukan SVG: lingkaran di dalam viewBox yang
+              diregangkan akan jadi lonjong. */}
+          {titik.map((k) => (
+            <span
+              key={k.sem.semester}
+              title={teks('Semester {n}', { n: k.sem.semester }) + ': ' + k.sem.nilai}
+              className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-ink ring-2 ring-[var(--surface)]"
+              style={{ left: k.x + '%', top: k.y + '%' }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Nama semester, ditulis lengkap dan ditempatkan di bawah titiknya
+          masing-masing. Semester yang belum dibuka tetap tertulis -- tanpa itu
+          mahasiswa semester dua akan mengira programnya hanya sampai situ.
+
+          Label pertama dan terakhir dirapatkan ke tepinya, bukan dipusatkan
+          pada titiknya. "Semester 1" yang dipusatkan di 4% akan separuhnya
+          keluar dari bidang; ini cara baku menambatkan label ujung, dan
+          pergeserannya tidak sampai membuat orang salah pasang label. */}
+      <div className="relative mt-1.5 ml-[34px] mr-1 h-4">
+        {daftar.map((sem, i) => (
+          <span
+            key={sem.semester}
+            className={
+              'absolute whitespace-nowrap text-[11px] text-ink-3' +
+              (i === 0 ? '' : i === daftar.length - 1 ? ' -translate-x-full' : ' -translate-x-1/2') +
+              (sem.nilai == null ? ' opacity-55' : '')
+            }
+            style={{ left: px(sem.semester) + '%' }}
+          >
+            {teks('Semester {n}', { n: sem.semester })}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* Grafik mana yang muncul di kartu nilai akhir bergantung pada data yang
+   sudah ada, bukan pada selera.
+
+   Tren antar semester baru punya arti kalau ada minimal dua semester bernilai;
+   dengan satu titik ia hanya bingkai kosong berisi satu noktah. Mahasiswa
+   semester satu justru yang paling banyak, jadi untuk mereka ditampilkan
+   sebaran aspek -- data yang pasti sudah ada, dan menjawab pertanyaan yang
+   memang relevan di tahap itu. */
+function GrafikRingkas({ t }) {
+  const semesterDinilai = Object.values(t.semester).filter((s) => s.nilai != null).length
+  const aspekDinilai = t.aspek.filter((a) => a.nilai != null).length
+
+  /* Mahasiswa yang benar-benar baru belum punya bahan untuk salah satu pun.
+     Pemisah kolomnya ikut dibawa ke sini supaya dalam keadaan itu tidak
+     tertinggal garis vertikal yang membatasi ruang kosong. */
+  if (semesterDinilai < 2 && aspekDinilai < 2) return null
+
+  return (
+    <div className="min-w-0 flex-1 sm:border-l sm:border-line sm:pl-6">
+      {semesterDinilai >= 2 ? <TrenSemester t={t} /> : <SebaranAspek t={t} />}
+    </div>
+  )
+}
+
+/* Ubin ringkas untuk kolom kanan.
+
+   Judul dan angkanya duduk pada satu baris, bukan bertumpuk seperti di ubin
+   utama. Sebabnya ruang: ketiganya kini berbagi satu kolom sempit di samping
+   kartu nilai akhir, dan judul yang bertumpuk di atas angka membuat tiap ubin
+   setinggi empat baris — kolom kanan akan jadi lebih padat daripada kiri, dan
+   susunan yang dimaksudkan menonjolkan nilai akhir justru berbalik. */
+function UbinRingkas({ judul, nilai, satuan, ke, children }) {
   const t = useTeks()
   const isi = (
     <>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[14px] font-semibold text-ink-2">{t(judul)}</p>
-        <span className={'grid h-10 w-10 shrink-0 place-items-center rounded-2xl ' + NADA_IKON[nada]}>
-          <Ikon size={20} />
+      <p className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0 truncate text-[13.5px] font-semibold text-ink-2">{t(judul)}</span>
+        <span className="shrink-0 text-[26px] font-extrabold leading-none tracking-tight text-ink">
+          {nilai}
+          {satuan ? <span className="text-[15px] font-bold text-ink-3">{satuan}</span> : null}
         </span>
-      </div>
-      <div className="mt-2">{children}</div>
+      </p>
+      {children}
     </>
   )
-  const kelas = 'kartu block px-5 py-5'
+  const kelas = 'kartu block px-5 py-4'
   return ke ? (
     <Link href={ke} className={kelas + ' transition hover:border-brand-ink'}>
       {isi}
@@ -75,36 +429,16 @@ function Ubin({ ikon: Ikon, nada = 'brand', judul, ke, children }) {
   )
 }
 
+
 /* ------------------------------ status aspek ------------------------------ */
 
 function StatusAspek({ a }) {
   const t = useTeks()
-  if (a.status === 'final') {
-    return (
-      <Badge tone="good" icon={IconCheck}>
-        {t('Final')}
-      </Badge>
-    )
-  }
+  if (a.status === 'final') return <StatusTeks kuat>{t('Final')}</StatusTeks>
   if (a.status === 'terkunci') {
-    return (
-      <Badge tone="neutral" icon={IconLock}>
-        {t('Semester {n}', { n: a.aspek.semester })}
-      </Badge>
-    )
+    return <StatusTeks>{t('Dibuka Semester {n}', { n: a.aspek.semester })}</StatusTeks>
   }
-  if (a.status === 'menunggu') {
-    return (
-      <Badge tone="neutral" icon={IconClock}>
-        {t('Belum dinilai')}
-      </Badge>
-    )
-  }
-  return (
-    <Badge tone="warning" icon={IconClock}>
-      {t('Sementara')}
-    </Badge>
-  )
+  return <StatusTeks>{t(a.status === 'menunggu' ? 'Belum dinilai' : 'Sementara')}</StatusTeks>
 }
 
 /* Dashboard hanya menampilkan sebagian; daftar lengkap tempatnya di
@@ -448,24 +782,48 @@ export default function Dashboard() {
       </header>
 
       {/* --------------------------------- ubin -------------------------------- */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Ubin ikon={IconGauge} judul="Nilai akhir">
-          {/* Satu-satunya angka besar di halaman ini. */}
-          <p className="text-[48px] font-extrabold leading-none tracking-tight text-ink">
-            {akhir.nilai ?? '-'}
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {akhir.nilai != null ? <HurufBadge nilai={akhir.nilai} /> : null}
-            <Badge tone={akhir.status === 'final' ? 'good' : 'warning'} icon={akhir.status === 'final' ? IconCheck : IconClock}>
-              {teks(akhir.status === 'final' ? 'Final' : 'Sementara')}
-            </Badge>
+      {/* --------------------------------------------------------------------
+          Satu kartu besar di kiri, tiga ubin ringkas menumpuk di kanan.
+
+          Sebelumnya keempatnya berukuran sama, dan itu berarti "85" bersaing
+          dengan "7/10", "3/10", dan "Belum tersedia" — padahal hanya satu dari
+          keempatnya yang menjawab pertanyaan pertama seorang mahasiswa. Ukuran
+          adalah cara paling murah menjawab "mana yang harus saya baca dulu",
+          dan ukuran yang sama berarti pertanyaan itu tidak dijawab sama
+          sekali.
+          -------------------------------------------------------------------- */}
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="kartu flex flex-col px-6 py-6 sm:px-7 sm:py-7">
+          <p className="text-[14px] font-semibold text-ink-2">{teks('Nilai akhir')}</p>
+
+          {/* Angka di kiri, grafik di kanan. Menumpuk keduanya membuat kartu
+              ini jadi empat baris tulisan di atas satu grafik, dengan rongga
+              lebar di kanan angkanya -- dan rongga itu terbaca sebagai ada
+              yang belum selesai dipasang. Di ponsel keduanya tetap bertumpuk,
+              karena di sana lebar adalah barang langka. */}
+          <div className="mt-2 flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:shrink-0 sm:flex-col sm:items-start sm:gap-y-1">
+              <p className="text-[56px] font-extrabold leading-[0.9] tracking-tight text-ink sm:text-[64px]">
+                {akhir.nilai ?? '-'}
+              </p>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  {akhir.nilai != null ? <HurufBadge nilai={akhir.nilai} /> : null}
+                  <StatusTeks kuat={akhir.status === 'final'}>
+                    {teks(akhir.status === 'final' ? 'Final' : 'Sementara')}
+                  </StatusTeks>
+                </div>
+                <p className="mt-1.5 text-[13px] text-ink-2">
+                  {teks('berdasarkan {n} dari {total} aspek', {
+                    n: akhir.aspekDinilai,
+                    total: akhir.aspekTotal,
+                  })}
+                </p>
+              </div>
+            </div>
+
+            <GrafikRingkas t={t} />
           </div>
-          <p className="mt-2 text-[13px] text-ink-2">
-            {teks('berdasarkan {n} dari {total} aspek', {
-              n: akhir.aspekDinilai,
-              total: akhir.aspekTotal,
-            })}
-          </p>
 
           {/* Hanya di ponsel. Nilai akhir tetap terlihat sebagai kepala; tiga
               ubin lainnya dilipat di bawahnya, dan ringkasannya tetap tertulis
@@ -475,7 +833,7 @@ export default function Dashboard() {
             onClick={() => setRinciBuka((v) => !v)}
             aria-expanded={rinciBuka}
             aria-controls="ubin-rinci"
-            className="mt-4 flex w-full items-center gap-2 border-t border-line pt-3.5 text-left sm:hidden"
+            className="mt-auto flex w-full items-center gap-2 border-t border-line pt-3.5 text-left sm:hidden"
           >
             <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink-2">
               {teks('{n}/{total} dinilai, {final} final · sertifikat {keadaan}', {
@@ -493,19 +851,18 @@ export default function Dashboard() {
               className={'shrink-0 text-brand-ink transition-transform ' + (rinciBuka ? 'rotate-180' : '')}
             />
           </button>
-        </Ubin>
+        </div>
 
-        {/* sm:contents melebur pembungkus ini di layar lebar, sehingga ketiga
-            ubin kembali menjadi anggota grid induknya seperti biasa. Di ponsel
-            ia tersembunyi sampai tombol Rincian ditekan. */}
-        <div id="ubin-rinci" className={(rinciBuka ? 'grid' : 'hidden') + ' gap-4 sm:contents'}>
-          <Ubin ikon={IconDocument} judul="Aspek dinilai">
-            <p className="text-[32px] font-extrabold leading-none tracking-tight text-ink">
-              {akhir.aspekDinilai}
-              <span className="text-[18px] font-bold text-ink-3"> / {akhir.aspekTotal}</span>
-            </p>
+        {/* Di ponsel ketiganya tersembunyi sampai tombol Rincian ditekan; sejak
+            640px ke atas selalu tampil, menumpuk di kolom kanan. */}
+        <div id="ubin-rinci" className={(rinciBuka ? 'grid' : 'hidden') + ' gap-4 sm:grid'}>
+          <UbinRingkas
+            judul="Aspek dinilai"
+            nilai={akhir.aspekDinilai}
+            satuan={' / ' + akhir.aspekTotal}
+          >
             <div
-              className="mt-4 h-2 w-full overflow-hidden rounded-full bg-[var(--grid)]"
+              className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--grid)]"
               role="meter"
               aria-valuemin={0}
               aria-valuemax={akhir.aspekTotal}
@@ -514,43 +871,43 @@ export default function Dashboard() {
             >
               <div className="h-full rounded-full bg-brand-ink" style={{ width: persenDinilai + '%' }} />
             </div>
-            <p className="mt-2 text-[13px] text-ink-2">
+            <p className="mt-2 text-[12.5px] leading-snug text-ink-2">
               {terkunci
                 ? teks('{n} aspek belum dibuka', { n: terkunci })
                 : teks('Semua aspek sudah dibuka')}
             </p>
-          </Ubin>
+          </UbinRingkas>
 
-          <Ubin ikon={IconCheck} nada="good" judul="Aspek final">
-            <p className="text-[32px] font-extrabold leading-none tracking-tight text-ink">
-              {akhir.aspekFinal}
-              <span className="text-[18px] font-bold text-ink-3"> / {akhir.aspekTotal}</span>
-            </p>
-            <p className="mt-4 text-[13px] leading-relaxed text-ink-2">
+          <UbinRingkas
+            judul="Aspek final"
+            nilai={akhir.aspekFinal}
+            satuan={' / ' + akhir.aspekTotal}
+          >
+            <p className="mt-2 text-[12.5px] leading-snug text-ink-2">
               {teks(
                 akhir.aspekFinal
                   ? 'Sudah dikunci dan tidak akan berubah lagi'
                   : 'Belum ada aspek yang dikunci',
               )}
             </p>
-          </Ubin>
+          </UbinRingkas>
 
-          <Ubin
-            ikon={IconCertificate}
-            nada={sertifikat.layak ? 'good' : 'warning'}
+          <UbinRingkas
             judul="Sertifikat"
             ke="/mahasiswa/sertifikat"
+            nilai={
+              <span className="text-[16px] font-extrabold leading-tight text-ink">
+                {teks(sertifikat.layak ? 'Siap diunduh' : 'Belum tersedia')}
+              </span>
+            }
           >
-            <p className="text-[22px] font-extrabold leading-tight text-ink">
-              {teks(sertifikat.layak ? 'Siap diunduh' : 'Belum tersedia')}
-            </p>
-            <p className="mt-3 flex items-center gap-1 text-[13px] text-ink-2">
+            <p className="mt-2 flex items-center gap-1 text-[12.5px] leading-snug text-ink-2">
               {sertifikat.layak
                 ? teks('Buka untuk mengunduh')
                 : teks('{n} syarat belum terpenuhi', { n: sertifikat.gagal.length })}
-              <IconChevronRight size={15} className="shrink-0" />
+              <IconChevronRight size={14} className="shrink-0" />
             </p>
-          </Ubin>
+          </UbinRingkas>
         </div>
       </section>
 

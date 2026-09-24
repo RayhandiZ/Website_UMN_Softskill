@@ -36,6 +36,14 @@
   --serious: #ec835a;
   --critical: #d03b3b;
 
+  /* Amber versi TEKS.
+
+     --warning dirancang sebagai warna isian: di atas tint tipisnya ia terbaca
+     baik. Sebagai tulisan di atas kartu putih ia hanya 1,83:1, jauh di bawah
+     ambang 4,5:1 — dan tulisan seperti "Terlambat" justru yang paling perlu
+     terbaca sekali lihat. Nilai ini 5,09:1 dengan rona yang sama. */
+  --warning-ink: #96640a;
+
   /* Huruf mutu adalah skala BERURUTAN (A > B > C > D), jadi warnanya satu hue
      bertingkat — bukan empat hue berbeda. Tervalidasi sebagai ordinal ramp:
      lightness monoton, jarak antarlangkah >= 0.06, ujung terang 2.11:1. */
@@ -65,6 +73,20 @@
   --brand-ink: #9ec5f4;
   --brand-soft: #12263f;
   --accent: #e8b455;
+
+  /* Merah versi terang untuk latar gelap.
+
+     Nilai terangnya (#d03b3b) hanya mencapai 3,56:1 di atas kartu gelap dan
+     gagal ambang 4,5:1 — padahal warna ini dipakai untuk pesan GALAT, yaitu
+     kalimat yang justru paling perlu terbaca. #f87171 mencapai 6,18:1.
+
+     Aman dinaikkan karena --critical tidak pernah dipakai sebagai latar di
+     aplikasi ini, hanya sebagai warna teks dan sebagai tint tipis. */
+  --critical: #f87171;
+
+  /* Di latar gelap arahnya berbalik: amber aslinya sudah 9,32:1, jadi yang
+     dipakai justru warna terangnya, bukan versi tuanya. */
+  --warning-ink: #fab219;
 
   /* 5C categorical slots — validated (dark, surface #131c2b) */
   --c1: #3987e5;
@@ -424,6 +446,99 @@ body {
 
   @page {
     margin: 14mm;
+  }
+
+  /* ------------------------------------------------------------------------
+     Transkrip di atas kertas: tabel dan tulisan saja.
+
+     A4 potret bermargin 14mm hanya menyisakan sekitar 688 px, sedangkan tabel
+     di layar dirancang selebar 820 px dan digulir mendatar. Di kertas tidak
+     ada yang bisa digulir — kolom yang melewati tepi hilang tanpa sisa, dan
+     pembacanya tidak pernah tahu ada kolom yang hilang. Karena itu di sini
+     lebarnya dilepas, hurufnya dikecilkan, dan setiap hiasan yang memakan
+     lebar dibuang.
+
+     Semua aturan disasar lewat .cetak-transkrip supaya tabel lain di aplikasi
+     tidak ikut terkena.
+     ------------------------------------------------------------------------ */
+  .cetak-transkrip table {
+    table-layout: fixed;
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 10.5px;
+  }
+
+  /* Wadah bergulir apa pun di dalam transkrip dilepas. Wadah yang bisa
+     digulir di layar adalah gunting di atas kertas: isinya terpotong di tepi
+     tanpa meninggalkan tanda bahwa ada yang hilang. */
+  .cetak-transkrip .overflow-x-auto,
+  .cetak-transkrip .overflow-hidden {
+    overflow: visible !important;
+  }
+
+  .cetak-transkrip th,
+  .cetak-transkrip td {
+    padding: 5px 6px !important;
+    /* Nama aspek yang panjang dipenggal, bukan melebarkan kolomnya. */
+    overflow-wrap: anywhere;
+  }
+
+  .cetak-transkrip th {
+    font-size: 8.5px !important;
+    letter-spacing: 0.04em;
+  }
+
+  /* Lebar tiap kolom ditetapkan supaya tidak ada yang memuai sendiri.
+     Urutannya: Kode, Aspek CPMK, Cluster, Sumber, Nilai, Huruf, Status. */
+  .cetak-transkrip thead th:nth-child(1) { width: 7%; }
+  .cetak-transkrip thead th:nth-child(2) { width: 33%; }
+  .cetak-transkrip thead th:nth-child(3) { width: 8%; }
+  .cetak-transkrip thead th:nth-child(4) { width: 20%; }
+  .cetak-transkrip thead th:nth-child(5) { width: 8%; }
+  .cetak-transkrip thead th:nth-child(6) { width: 8%; }
+  .cetak-transkrip thead th:nth-child(7) { width: 16%; }
+
+  /* Isi sel dikembalikan ke ukuran tulisan biasa: angka nilai yang 15px dan
+     nama aspek yang 14px sama-sama terlalu besar untuk lebar yang tersisa. */
+  .cetak-transkrip td span {
+    font-size: 10.5px !important;
+  }
+
+  /* Kotak warna area: penanda visual yang tidak berarti apa-apa di atas
+     kertas hitam-putih, dan memakan lebar kolom Kode. */
+  .cetak-transkrip .tanda-area {
+    display: none !important;
+  }
+
+  /* Sumber penilaian: di layar tiga pil bertumpuk, di kertas satu baris
+     dipisah koma. Menumpuk tiga pil membuat tiap barisnya setinggi tiga baris
+     tanpa menambah satu keterangan pun. */
+  .cetak-transkrip .sumber-pil {
+    display: inline !important;
+    background: none !important;
+    padding: 0 !important;
+    font-weight: 400 !important;
+  }
+  .cetak-transkrip .sumber-pil:not(:last-child)::after {
+    content: ', ';
+  }
+
+  /* Huruf mutu: hurufnya saja. Pil dan warnanya dilepas — di atas kertas
+     hitam-putih warna hanya menjadi abu-abu yang lebih sulit dibaca. */
+  .cetak-transkrip td span[class*='rounded-lg'] {
+    background: none !important;
+    padding: 0 !important;
+    color: #000000 !important;
+  }
+
+  /* Ikon bulat di kepala kartu — hiasan layar. */
+  .cetak-transkrip header span[class*='rounded-xl'] {
+    display: none !important;
+  }
+
+  /* Baris kepala semester tetap menempel pada baris di bawahnya. */
+  .cetak-transkrip tbody {
+    break-inside: avoid;
   }
 }
 
