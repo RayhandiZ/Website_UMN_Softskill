@@ -163,7 +163,7 @@ const RUTE = [
 ;(async () => {
   const bundle = require('./bundle.cjs')
   const mod = require(bundle('smoke.jsx', '.smoke.cjs', { platform: 'browser', format: 'cjs', loader: { '.jsx': 'jsx' }, jsx: 'automatic' }))
-  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, ujiAlurDosen, ujiBahasa, ujiSeretBahasa, ujiLayanan, ujiPanelLain, ujiKamus, ujiOtomatis, ujiStatusPolos, ujiCetakTranskrip, ujiTandaDraft, ujiTrenSemester, ujiKurva, perAngkatan, BATAS_BARIS_ASPEK } = mod
+  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, ujiAlurDosen, ujiBahasa, ujiSeretBahasa, ujiLayanan, ujiPanelLain, ujiKamus, ujiOtomatis, ujiStatusPolos, ujiCetakTranskrip, ujiTandaDraft, ujiTrenSemester, ujiKurva, ujiPerkembangan, ujiPenandaMenu, perAngkatan, BATAS_BARIS_ASPEK } = mod
   let gagal = 0
   for (const [peran, rute, nama] of RUTE) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
@@ -728,6 +728,53 @@ const RUTE = [
     ['kurva: nilai yang tidak berubah tergambar datar', kv.tetapTergambarDatar],
     ['kurva: kurang dari dua titik tidak menggambar apa pun', kv.satuTitikKosong],
   )
+  w.localStorage.setItem('sk5c.session', SESI.admin)
+  const pk = await ujiPerkembangan()
+  w.localStorage.setItem('sk5c.session', SESI.student)
+  const cekPk = [
+    ['panelnya ada di Overview', pk.ada],
+    ['satu panel per angkatan', pk.jumlahPanel === 4],
+    ['satu batang per semester yang sudah dinilai', pk.jumlahBatang === 9],
+    ['tiap batang memuat angkanya', pk.tiapBatangBerangka],
+    ['tinggi batang sebanding nilainya dari nol', pk.dariNol],
+    ['warna batang dari ramp ordinal semester', pk.rampOrdinal],
+    ['batang paling tebal 24px', pk.lebarBatang],
+    ['ujung data membulat, pangkal persegi', pk.ujungBulat],
+    ['angka memakai warna teks, bukan warna batang', pk.angkaWarnaTeks],
+    ['semester belum dibuka tanpa batang nol (R2)', pk.belumDibuka === 3],
+    ['garis ambang putus-putus di 70', pk.ambangPutus],
+    ['nama semester ditulis lengkap di tiap panel', pk.namaSemesterLengkap],
+    ['skala 0 sampai 100 dinyatakan', pk.skala0100],
+    ['alasan pemisahan angkatan tertulis di layar', pk.alasanTertulis],
+    ['angkatan satu semester tidak mengaku punya tren', pk.adaPembandingKosong],
+    ['kenaikan dinyatakan sebagai angka', pk.adaKenaikan],
+    ['tabel angka tersedia tanpa mengandalkan grafik', pk.barisTabel === 4],
+    ['tabel memuat jumlah mahasiswa dan ketiga semester', /Mahasiswa.*Semester 1.*Semester 2.*Semester 3/.test(pk.kepalaTabel)],
+    ['angkatan tertua tampil lebih dulu', pk.urutanTertuaDulu],
+    ['garis ambang berlabel di panelnya sendiri', pk.labelAmbangLangsung],
+    ['tiap panel punya satu kalimat untuk pembaca layar', pk.kalimatPembacaLayar],
+  ]
+  const rusakPk = cekPk.filter(([, ok]) => !ok)
+  gagal += rusakPk.length
+  console.log('')
+  console.log((rusakPk.length ? 'GAGAL  ' : 'OK     ') + 'Perkembangan angkatan (Overview admin)')
+  for (const [ket, ok] of cekPk) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  const pm = await ujiPenandaMenu()
+  const cekPm = [
+    ['lima butir menu bisa diukur', pm.jumlahButir === 5],
+    ['tanpa tata letak, latar statis tetap menandai halaman aktif', pm.cadanganAwal],
+    ['penanda tidak dipasang selama belum bisa diukur', pm.tanpaPenandaTakTerukur],
+    ['isi halaman dibungkus animasi masuk', pm.isiBeranimasi],
+    ['Ctrl+klik tidak memindahkan penanda', pm.pengubahDiam],
+    ['klik biasa memindahkan penanda seketika', pm.pindahSeketika],
+    ['aria-current tetap di halaman yang benar-benar terbuka', pm.ariaTetapJujur],
+  ]
+  const rusakPm = cekPm.filter(([, ok]) => !ok)
+  gagal += rusakPm.length
+  console.log((rusakPm.length ? 'GAGAL  ' : 'OK     ') + 'Penanda menu mahasiswa')
+  for (const [ket, ok] of cekPm) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
   const rusakTren = cekTren.filter(([, ok]) => !ok)
   gagal += rusakTren.length
   console.log('')

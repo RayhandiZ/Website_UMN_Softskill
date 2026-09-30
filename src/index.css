@@ -52,6 +52,12 @@
   --mutu-c: #5598e7;
   --mutu-d: #86b6ef;
 
+  /* Urutan semester, terang ke gelap. Diuji validator dataviz --ordinal;
+     ujung terangnya 3,64:1 di atas kartu. */
+  --semester-1: #3987e5;
+  --semester-2: #256abf;
+  --semester-3: #104281;
+
   --grid: #eceef6;
 }
 
@@ -100,6 +106,12 @@
   --mutu-b: #86b6ef;
   --mutu-c: #3987e5;
   --mutu-d: #184f95;
+
+  /* Dibalik di latar gelap: semester terakhir yang paling terang. Ujung
+     gelapnya 3,17:1 di atas kartu. */
+  --semester-1: #256abf;
+  --semester-2: #5598e7;
+  --semester-3: #9ec5f4;
 
   --grid: #212c44;
 }
@@ -160,6 +172,11 @@ body {
 
 .animate-rise { animation: rise .35s cubic-bezier(.22,.68,.35,1) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Isi halaman masuk sesudah pindah menu, supaya mata ikut berpindah dari sidebar ke isi.
+   Berakhir di transform: none, jadi elemen fixed di dalam halaman tidak ikut tergeser. */
+.animate-halaman { animation: halaman .22s cubic-bezier(.22,.68,.35,1) both; }
+@keyframes halaman { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 /* --------------------------------------------------------------------------
    Panel kaca — lapisan tembus pandang yang mengaburkan apa pun di belakangnya.

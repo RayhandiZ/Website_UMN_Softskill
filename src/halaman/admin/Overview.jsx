@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '../../components/Ui'
 import MutuDonut from '../../components/charts/MutuDonut'
+import PerkembanganAngkatan from '../../components/charts/PerkembanganAngkatan'
 import {
   IconBuilding,
   IconCertificate,
@@ -208,6 +209,10 @@ export default function Overview() {
           // keterangan="Mahasiswa yang seluruh sepuluh aspeknya sudah dinilai dan dikunci."
         />
         </div>
+      </section>
+
+      <section>
+        <PerkembanganAngkatan rows={rows} />
       </section>
 
       {/* -------------------------------- sebaran -------------------------------- */}

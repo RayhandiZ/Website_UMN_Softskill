@@ -65,3 +65,43 @@ export function jalurMulus(titik) {
   }
   return d
 }
+
+/* Kelipatan garis bantu yang enak dibaca: yang terkecil menghasilkan paling
+   banyak lima petak. */
+function pilihLangkah(bawah, atas) {
+  for (const l of [1, 2, 5, 10, 20, 25, 50]) {
+    if ((Math.ceil(atas / l) * l - Math.floor(bawah / l) * l) / l <= 5) return l
+  }
+  return 50
+}
+
+// Jendela sumbu Y untuk grafik garis saja; batang wajib berangkat dari nol.
+// Lebar minimumnya mencegah selisih satu angka tampak seperti lompatan besar.
+export function jendelaNilai(angka, { min = 20 } = {}) {
+  const rendah = Math.min(...angka)
+  const tinggi = Math.max(...angka)
+
+  let bawah = rendah - 4
+  let atas = tinggi + 4
+  if (atas - bawah < min) {
+    const tengah = (rendah + tinggi) / 2
+    bawah = tengah - min / 2
+    atas = tengah + min / 2
+  }
+  // Digeser, bukan dipotong, supaya lebarnya tidak menyusut di dekat ujung skala.
+  if (bawah < 0) {
+    atas -= bawah
+    bawah = 0
+  }
+  if (atas > 100) {
+    bawah -= atas - 100
+    atas = 100
+  }
+
+  const langkah = pilihLangkah(bawah, atas)
+  const b = Math.max(0, Math.floor(bawah / langkah) * langkah)
+  const a = Math.min(100, Math.ceil(atas / langkah) * langkah)
+  const garis = []
+  for (let v = b; v <= a; v += langkah) garis.push(v)
+  return { bawah: b, atas: a, langkah, garis }
+}

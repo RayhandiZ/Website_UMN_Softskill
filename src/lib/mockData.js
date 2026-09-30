@@ -55,11 +55,13 @@ export function turunkanSemesterAktif(intake, aktif = PERIODE_AKTIF) {
    seluruh angkatan hanya berada di semester ganjil (1 dan 3) dan semester 2
    tidak akan pernah bisa didemokan. */
 
+// laju menggeser taraf nilai per semester; tanpanya rata-rata tiap angkatan datar sempurna.
+// 2025 Genap sengaja hampir datar, supaya pemantauan juga menampilkan angkatan yang tidak berkembang.
 const ANGKATAN_DASAR = [
-  { id: '2026', angkatan: 2026, label: '2026', intake: { tahun: '2026/2027', semester: 'Ganjil' }, status: 'aktif' },
-  { id: '2025B', angkatan: 2025, label: '2025 Genap', intake: { tahun: '2025/2026', semester: 'Genap' }, status: 'aktif' },
-  { id: '2025', angkatan: 2025, label: '2025', intake: { tahun: '2025/2026', semester: 'Ganjil' }, status: 'aktif' },
-  { id: '2024', angkatan: 2024, label: '2024', intake: { tahun: '2024/2025', semester: 'Ganjil' }, status: 'terkunci' },
+  { id: '2026', angkatan: 2026, label: '2026', intake: { tahun: '2026/2027', semester: 'Ganjil' }, status: 'aktif', laju: {} },
+  { id: '2025B', angkatan: 2025, label: '2025 Genap', intake: { tahun: '2025/2026', semester: 'Genap' }, status: 'aktif', laju: { 2: 1 } },
+  { id: '2025', angkatan: 2025, label: '2025', intake: { tahun: '2025/2026', semester: 'Ganjil' }, status: 'aktif', laju: { 1: -2, 3: 2 } },
+  { id: '2024', angkatan: 2024, label: '2024', intake: { tahun: '2024/2025', semester: 'Ganjil' }, status: 'terkunci', laju: { 1: -4, 3: 3 } },
 ]
 
 export const COHORTS = ANGKATAN_DASAR.map((a) => ({
@@ -218,11 +220,9 @@ function bangunNilai(angkatan, semesterAktif, basis, opsi = {}) {
   for (const aspek of getAspekList()) {
     if (aspek.semester > semesterAktif) continue
 
-    /* opsi.basisSemester memungkinkan satu mahasiswa punya taraf berbeda di
-       tiap semester. Tanpa ini setiap persona nilainya rata sepanjang program,
-       dan grafik trennya jadi garis datar -- benar, tapi tidak memperagakan
-       apa pun. Dipakai hanya oleh persona demo. */
-    const taraf = opsi.basisSemester?.[aspek.semester] ?? basis
+    /* Persona demo boleh menimpa laju angkatannya sendiri. */
+    const laju = opsi.lajuSemester ?? angkatan.laju ?? {}
+    const taraf = clamp(basis + (laju[aspek.semester] ?? 0))
     const periode = angkatan.periode[aspek.semester - 1]
     const batchId = 'B-' + angkatan.id + '-S' + aspek.semester
     const lampau = aspek.semester < semesterAktif
@@ -350,13 +350,8 @@ const PERSONA = [
        kenaikan yang nyata -- bukan garis datar seperti kalau tarafnya sama
        sepanjang program.
 
-       Tertulis 69, bukan 70, dan itu bukan salah ketik: angka ini adalah pusat
-       sebaran nilai per KOMPONEN, yang masing-masing masih digoyang
-       between(-6, 6) lalu dirata-ratakan menjadi nilai aspek, baru menjadi
-       nilai semester. Dengan benih acak yang dipakai di sini, 69 yang
-       mendaratkan rata-rata Semester 1 tepat di 70; 70 menghasilkan 71. Kalau
-       benihnya diubah, angka ini perlu dicari ulang. */
-    opsi: { tanpaMenunggu: true, basisSemester: { 1: 69 } },
+       -15, bukan -14: dengan goyangan per komponen, taraf 69 yang mendarat di rata-rata 70. */
+    opsi: { tanpaMenunggu: true, lajuSemester: { 1: -15 } },
   }),
   buatMahasiswa({
     id: 'DEMO-3',

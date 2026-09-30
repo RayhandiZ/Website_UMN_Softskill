@@ -15,7 +15,7 @@ import { PERIODE_AKTIF, labelPeriode, transkripOf } from '../../lib/mockData'
 import { useStudent } from './StudentLayout'
 import { useStore } from '../../lib/store'
 import { useTeks } from '../../lib/bahasa'
-import { jalurMulus } from '../../lib/kurva'
+import { jalurMulus, jendelaNilai } from '../../lib/kurva'
 
 /* --------------------------------------------------------------------------
    Dashboard mahasiswa.
@@ -161,60 +161,17 @@ function SebaranAspek({ t }) {
    diteruskan ke sana (R2) -- hanya nama semesternya yang tampil, diredupkan.
    -------------------------------------------------------------------------- */
 
-/* Lebar jendela sumbu Y paling sempit yang diizinkan, dalam satuan nilai. */
-const JENDELA_MIN = 20
-
 /* Tinggi bidang gambar dalam piksel. Dipakai dua kali: oleh bidangnya sendiri
    dan oleh lajur label sumbu Y di sebelahnya, yang harus setinggi itu persis
    supaya tiap label duduk tepat pada garis bantunya. */
 const TINGGI_BAGAN = 116
-
-/* Jarak antar garis bantu. Dipilih dari kelipatan yang enak dibaca, bukan dari
-   rentang datanya langsung: sumbu yang berlabel 70, 75, 80 jauh lebih cepat
-   dibaca daripada 71, 78,3, 85,6 meskipun keduanya sama benarnya. Yang dicari
-   adalah kelipatan terkecil yang menghasilkan paling banyak lima petak. */
-function pilihLangkah(bawahKasar, atasKasar) {
-  for (const langkah of [1, 2, 5, 10, 20, 25, 50]) {
-    const b = Math.floor(bawahKasar / langkah) * langkah
-    const a = Math.ceil(atasKasar / langkah) * langkah
-    if ((a - b) / langkah <= 5) return langkah
-  }
-  return 50
-}
 
 function TrenSemester({ t }) {
   const teks = useTeks()
   const daftar = Object.values(t.semester)
   const dinilai = daftar.filter((s) => s.nilai != null)
 
-  const angka = dinilai.map((s) => s.nilai)
-  const rendah = Math.min(...angka)
-  const tinggi = Math.max(...angka)
-
-  let bawahKasar = rendah - 4
-  let atasKasar = tinggi + 4
-  if (atasKasar - bawahKasar < JENDELA_MIN) {
-    const tengah = (rendah + tinggi) / 2
-    bawahKasar = tengah - JENDELA_MIN / 2
-    atasKasar = tengah + JENDELA_MIN / 2
-  }
-  /* Digeser, bukan dipotong, supaya lebar jendelanya tidak menyusut di dekat
-     ujung skala: nilai 96 tetap dibaca pada jendela selebar 20 angka. */
-  if (bawahKasar < 0) {
-    atasKasar -= bawahKasar
-    bawahKasar = 0
-  }
-  if (atasKasar > 100) {
-    bawahKasar -= atasKasar - 100
-    atasKasar = 100
-  }
-
-  const langkah = pilihLangkah(bawahKasar, atasKasar)
-  const bawah = Math.max(0, Math.floor(bawahKasar / langkah) * langkah)
-  const atas = Math.min(100, Math.ceil(atasKasar / langkah) * langkah)
-
-  const garisBantu = []
-  for (let v = bawah; v <= atas; v += langkah) garisBantu.push(v)
+  const { bawah, atas, garis: garisBantu } = jendelaNilai(dinilai.map((s) => s.nilai))
 
   /* Koordinat dalam persen; SVG-nya memakai viewBox 0 0 100 100 dengan
      preserveAspectRatio="none" supaya ikut melebar mengikuti kartu.

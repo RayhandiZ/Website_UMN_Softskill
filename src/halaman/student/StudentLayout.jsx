@@ -1,7 +1,8 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { TautanNav } from '../../lib/nav'
+import { usePenandaGeser } from '../../lib/penandaGeser'
 import Footer from '../../components/Footer'
 import Laci from '../../components/Laci'
 import MenuAkun from '../../components/MenuAkun'
@@ -79,26 +80,60 @@ export const useStudent = () => useContext(KonteksMahasiswa)
    tetap terbaca sekali lihat. */
 function DaftarMenu({ onPilih, besar = false }) {
   const t = useTeks()
+  const jalur = usePathname() ?? ''
+
+  // Butir yang baru diklik. Penanda langsung berangkat, tidak menunggu halaman tujuan selesai
+  // dimuat (di mode dev bisa satu-dua detik).
+  const [tujuan, setTujuan] = useState(null)
+  useEffect(() => setTujuan(null), [jalur])
+  // Navigasi yang batal tidak mengubah jalur, jadi penanda jangan tertinggal di tujuan.
+  useEffect(() => {
+    if (!tujuan) return undefined
+    const id = setTimeout(() => setTujuan(null), 8000)
+    return () => clearTimeout(id)
+  }, [tujuan])
+
+  const cocok = (m) => (m.end ? jalur === m.to : jalur === m.to || jalur.startsWith(m.to + '/'))
+  const aktif = tujuan ?? MENU.find(cocok)?.to ?? null
+  const { wadah, siap, gaya } = usePenandaGeser(aktif)
+
   return (
-    <ul className="space-y-1">
-      {MENU.map(({ to, label, icon: Icon, end }) => (
-        <li key={to}>
-          <TautanNav
-            href={to}
-            end={end}
-            onClick={onPilih}
-            className={({ isActive }) =>
-              'flex items-center gap-3 rounded-2xl px-3.5 font-bold transition ' +
-              (besar ? 'py-3.5 text-[16px] ' : 'py-3 text-[14.5px] ') +
-              (isActive ? 'bg-brand-soft text-brand-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink')
-            }
-          >
-            <Icon size={20} className="shrink-0" />
-            <span className="truncate">{t(label)}</span>
-          </TautanNav>
-        </li>
-      ))}
-    </ul>
+    <div ref={wadah} className="relative">
+      {siap ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 top-0 rounded-2xl bg-brand-soft"
+          style={gaya}
+        />
+      ) : null}
+      <ul className="space-y-1">
+        {MENU.map(({ to, label, icon: Icon, end }) => (
+          <li key={to}>
+            <TautanNav
+              href={to}
+              end={end}
+              data-geser={to}
+              onClick={(e) => {
+                // Klik tengah atau dengan tombol pengubah membuka tab baru; halaman ini tetap.
+                if (!(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0)) setTujuan(to)
+                onPilih?.(e)
+              }}
+              // aria-current tetap mengikuti halaman yang benar-benar terbuka; warna mengikuti penanda.
+              className={() =>
+                'relative flex items-center gap-3 rounded-2xl px-3.5 font-bold transition-colors duration-200 ease-[cubic-bezier(.22,.68,.35,1)] ' +
+                (besar ? 'py-3.5 text-[16px] ' : 'py-3 text-[14.5px] ') +
+                (to === aktif
+                  ? (siap ? '' : 'bg-brand-soft ') + 'text-brand-ink'
+                  : 'text-ink-2 hover:bg-surface-2 hover:text-ink')
+              }
+            >
+              <Icon size={20} className="shrink-0" />
+              <span className="truncate">{t(label)}</span>
+            </TautanNav>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -123,6 +158,7 @@ export default function StudentLayout({ children }) {
   const { user, logout } = useAuth()
   const teks = useTeks()
   const router = useRouter()
+  const jalurHalaman = usePathname()
   const [laci, setLaci] = useState(false)
 
   /* Yang tampil adalah mahasiswa yang sedang masuk. personaAktif() hanya
@@ -190,7 +226,12 @@ export default function StudentLayout({ children }) {
         </header>
 
         <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 pb-4 pt-2 sm:px-6 lg:px-8">
-          <KonteksMahasiswa.Provider value={student}>{children}</KonteksMahasiswa.Provider>
+          <KonteksMahasiswa.Provider value={student}>
+            {/* Dikunci per jalur supaya animasi masuknya berjalan lagi setiap pindah menu. */}
+            <div key={jalurHalaman} className="animate-halaman">
+              {children}
+            </div>
+          </KonteksMahasiswa.Provider>
         </main>
 
         <Footer pintasan={PINTASAN} />

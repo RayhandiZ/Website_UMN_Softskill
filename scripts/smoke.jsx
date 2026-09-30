@@ -873,6 +873,122 @@ export function ujiKurva() {
   }
 }
 
+// Yang paling dijaga: tinggi tiap batang sebanding nilainya dari nol, diukur dari piksel.
+const TINGGI_BATANG = 120
+
+export async function ujiPerkembangan() {
+  const { el, lepas } = await pasang('/admin')
+
+  const bingkai = [...el.querySelectorAll('section')].find((n) =>
+    /Perkembangan nilai tiap angkatan/.test(n.textContent),
+  )
+  const panel = bingkai ? [...bingkai.querySelectorAll('div.rounded-xl.border')] : []
+  const batang = bingkai
+    ? [...bingkai.querySelectorAll('span')].filter((n) => n.className.includes('rounded-t-[4px]'))
+    : []
+
+  // Angka pada tiap batang duduk tepat sebelum batangnya.
+  const pasangan = batang.map((b) => ({
+    tinggi: parseFloat(b.style.height),
+    latar: b.style.background,
+    kelas: b.className,
+    label: b.previousElementSibling,
+  }))
+
+  const ambang = bingkai
+    ? [...bingkai.querySelectorAll('span')].filter((n) => n.className.includes('border-dashed'))
+    : []
+
+  const teksBingkai = bingkai?.textContent ?? ''
+  const namaSemester = bingkai
+    ? [...bingkai.querySelectorAll('span')].filter((n) => /^Semester \d$/.test(n.textContent))
+    : []
+
+  const tombolTabel = bingkai
+    ? [...bingkai.querySelectorAll('button')].find((n) => /Tabel/.test(n.textContent))
+    : null
+  let barisTabel = 0
+  let kepalaTabel = ''
+  if (tombolTabel) {
+    await klik(tombolTabel)
+    barisTabel = bingkai.querySelectorAll('tbody tr').length
+    kepalaTabel = [...bingkai.querySelectorAll('thead th')].map((n) => n.textContent).join('|')
+    await klik(tombolTabel)
+  }
+
+  const hasil = {
+    ada: Boolean(bingkai),
+    jumlahPanel: panel.length,
+    // 2026 satu semester, 2025 Genap dua, 2025 dan 2024 tiga: sembilan batang.
+    jumlahBatang: batang.length,
+    tiapBatangBerangka: pasangan.length > 0 && pasangan.every((p) => /^\d+$/.test(p.label?.textContent ?? '')),
+    dariNol:
+      pasangan.length > 0 &&
+      pasangan.every((p) => Math.abs((p.tinggi / TINGGI_BATANG) * 100 - Number(p.label?.textContent)) < 0.6),
+    rampOrdinal: pasangan.length > 0 && pasangan.every((p) => /var\(--semester-\d/.test(p.latar)),
+    // Batang paling tebal 24px, ujung data membulat 4px, pangkal di garis dasar tetap persegi.
+    lebarBatang: pasangan.every((p) => p.kelas.includes('w-6')),
+    ujungBulat: pasangan.every(
+      (p) => p.kelas.includes('rounded-t-[4px]') && !p.kelas.split(' ').some((k) => /^rounded(-full|-md|-lg|-xl)?$/.test(k)),
+    ),
+    angkaWarnaTeks: pasangan.every((p) => p.label?.className.includes('text-ink')),
+    // Semester yang belum dibuka tidak punya batang sama sekali (R2): 2026 dua, 2025 Genap satu.
+    belumDibuka: (teksBingkai.match(/Belum dibuka/g) ?? []).length,
+    // Ambang 70 dari tinggi 120: 84px dari garis dasar.
+    ambangPutus: ambang.length === panel.length && ambang.every((n) => Math.abs(parseFloat(n.style.bottom) - 84) < 0.01),
+    namaSemesterLengkap: namaSemester.length === panel.length * 3,
+    skala0100: /Skala 0 sampai 100, sama untuk semua panel/.test(teksBingkai),
+    alasanTertulis: /isinya mahasiswa yang berbeda/.test(teksBingkai),
+    barisTabel,
+    kepalaTabel,
+    adaPembandingKosong: /belum ada pembanding/.test(teksBingkai),
+    adaKenaikan: /Naik \d+ sejak Semester/.test(teksBingkai),
+    urutanTertuaDulu: /^2024/.test(panel[0]?.textContent ?? ''),
+    labelAmbangLangsung: panel.length > 0 && panel.every((p) => [...p.querySelectorAll('span')].some((n) => n.textContent === '70')),
+    kalimatPembacaLayar:
+      panel.length > 0 &&
+      panel.every((p) => /^Semester 1: (\d+|Belum dibuka), Semester 2: /.test(p.querySelector('[role="img"]')?.getAttribute('aria-label') ?? '')),
+  }
+
+  lepas()
+  return hasil
+}
+
+// Penanda menu mahasiswa. Luncurannya butuh tata letak sungguhan, jadi yang diuji di sini hanya logikanya.
+export async function ujiPenandaMenu() {
+  const { el, lepas } = await pasang('/mahasiswa')
+  // jsdom tidak mengenal navigasi; tanpa ini klik tautan mencetak galat "not implemented".
+  el.addEventListener('click', (e) => e.preventDefault(), true)
+
+  const nav = el.querySelector('aside nav')
+  const butir = () => [...nav.querySelectorAll('a[data-geser]')]
+  const bertanda = () => butir().filter((a) => a.className.includes('bg-brand-soft')).map((a) => a.dataset.geser)
+  const sekarang = () => butir().find((a) => a.getAttribute('aria-current') === 'page')?.dataset.geser
+  const cari = (href) => butir().find((a) => a.dataset.geser === href)
+
+  const hasil = {
+    jumlahButir: butir().length,
+    // Tanpa tata letak penanda tidak bisa diukur, jadi latar statis harus tetap menandai halaman aktif.
+    cadanganAwal: bertanda().join() === '/mahasiswa',
+    tanpaPenandaTakTerukur: !nav.querySelector('div.relative > span[aria-hidden="true"]'),
+    isiBeranimasi: !!el.querySelector('main .animate-halaman'),
+  }
+
+  await act(async () => {
+    cari('/mahasiswa/sertifikat').dispatchEvent(
+      new window.MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }),
+    )
+  })
+  hasil.pengubahDiam = bertanda().join() === '/mahasiswa'
+
+  await klik(cari('/mahasiswa/riwayat'), 1)
+  hasil.pindahSeketika = bertanda().join() === '/mahasiswa/riwayat'
+  hasil.ariaTetapJujur = sekarang() === '/mahasiswa'
+
+  lepas()
+  return hasil
+}
+
 export async function ujiTrenSemester(sem) {
   window.history.replaceState({}, '', '/?sem=' + sem)
   const { el, lepas } = await pasang('/mahasiswa')
