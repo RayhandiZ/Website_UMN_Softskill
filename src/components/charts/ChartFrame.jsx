@@ -25,7 +25,7 @@ export default function ChartFrame({
           <h2 className="text-[15px] font-bold leading-tight text-ink">{t(title)}</h2>
           {subtitle ? <p className="mt-1 text-[13px] leading-snug text-ink-2">{t(subtitle)}</p> : null}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {action}
           {table ? (
             <button
@@ -33,7 +33,7 @@ export default function ChartFrame({
               onClick={() => setShowTable((v) => !v)}
               aria-pressed={showTable}
               className={
-                'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] font-bold transition ' +
+                'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-bold transition sm:min-h-0 sm:py-1.5 ' +
                 (showTable
                   ? 'border-brand-ink bg-brand-soft text-brand-ink'
                   : 'border-line text-ink-2 hover:bg-surface-2')

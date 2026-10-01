@@ -328,6 +328,13 @@ function nilaiAkhirPerSemester(semua) {
   return perSemester.length ? rerata(perSemester) : null
 }
 
+/** Nilai akhir bila hanya aspek sampai Semester `sampai` yang dihitung, dengan mode agregasi yang sama.
+    Pada semester terakhir yang bernilai, hasilnya sama persis dengan transkrip.akhir.nilai. */
+export function nilaiKumulatif(transkrip, sampai) {
+  const semua = transkrip.aspek.filter((a) => (a.aspek?.semester ?? Infinity) <= sampai)
+  return bulat(CONFIG.MODE_AGREGASI === 'per-semester' ? nilaiAkhirPerSemester(semua) : nilaiAkhirPerAspek(semua))
+}
+
 /* ------------------------------ transkrip utuh ---------------------------- */
 
 /**

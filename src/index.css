@@ -315,6 +315,30 @@ body {
   }
 }
 
+/* Tooltip grafik: pudar dan naik sedikit dari arah batang yang ditunjuk. */
+.animate-tip {
+  transform-origin: bottom center;
+  animation: tip 0.14s cubic-bezier(0.22, 0.68, 0.35, 1) both;
+}
+@keyframes tip {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+
+/* Kebalikan kaca dan lebih cepat, dipercepat ke akhir: menu yang ditutup tidak perlu ditonton. */
+.animate-surut {
+  transform-origin: top left;
+  animation: surut 0.12s cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes surut {
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
 /* Laci menu di layar kecil. Kedua kelas ini ikut dinetralkan oleh blok
    prefers-reduced-motion di bawah, jadi tidak perlu penanganan terpisah. */
 .animate-geser { animation: geser .24s cubic-bezier(.22,.68,.35,1) both; }

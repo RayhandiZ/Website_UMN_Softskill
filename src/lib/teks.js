@@ -847,27 +847,32 @@ export const EN = {
      di scripts/bahasa.mjs hanya mengenali t('...') di tempatnya, jadi kunci
      di bawah ini tidak akan pernah muncul sebagai "belum diterjemahkan"
      meskipun hilang. Ditulis tangan sampai pemindainya diperbaiki. */
-  'Perkembangan nilai tiap angkatan': 'Score progress by cohort',
-  'Rata-rata Semester 1 sampai 3. Tiap angkatan dipisah karena isinya mahasiswa yang berbeda, jadi menggabungkannya akan mencampur perkembangan dengan pergantian angkatan.':
-    'Average across Semester 1 to 3. Cohorts are kept apart because they hold different students, so merging them would mix real progress with cohort turnover.',
+  'Perkembangan nilai per semester': 'Score progress by semester',
+  'Pilih sampai semester berapa yang ingin dilihat. Batang hanya menghitung mahasiswa yang sudah punya nilai di semua semester yang tampil.':
+    'Choose how far to look. Bars only count students who have a score in every semester shown.',
   'Nilai per aspek CPMK': 'Score by CPMK aspect',
   'Sepuluh aspek, dikelompokkan menurut area pengembangan': 'Ten aspects, grouped by development area',
   Angkatan: 'Cohort',
   Selisih: 'Change',
+  Gabungan: 'Combined',
   'Semester 1': 'Semester 1',
   'Semester 2': 'Semester 2',
   'Semester 3': 'Semester 3',
 
-  /* ----------------------------------------------------------------------
-     BELUM DITERJEMAHKAN — ditulis otomatis oleh `npm run bahasa:sync`.
-     Isi sisi kanannya, lalu pindahkan barisnya ke bagian yang sesuai di
-     atas. Selama masih kosong, kalimatnya tampil dalam bahasa Indonesia.
-     ---------------------------------------------------------------------- */
+  // Panel perkembangan per semester di Overview admin.
   'Baru satu semester, belum ada pembanding': 'Only one semester so far, nothing to compare',
   'Belum ada nilai semester yang masuk, jadi perkembangan belum bisa dihitung. Masukkan nilai lewat halaman Input & Import Nilai, atau setujui usulan nilai dari dosen.':
     'No semester scores have come in yet, so progress cannot be calculated. Enter scores from the Score Entry & Import page, or approve a lecturer submission.',
-  'Sedang di Semester {n}': 'Currently in Semester {n}',
-  'Skala 0 sampai 100, sama untuk semua panel. Garis putus-putus: ambang kelulusan {ambang}.':
-    'Scale 0 to 100, the same on every panel. Dashed line: pass threshold {ambang}.',
-  'Sudah tamat': 'Completed',
+  'angkatan {daftar}': 'cohorts {daftar}',
+  'Di atas ambang {ambang}': 'Above the {ambang} threshold',
+  'Nilai rata-rata': 'Average score',
+  'Semester 1 sampai {n}': 'Semester 1 to {n}',
+  'Tampilkan sampai semester': 'Show up to semester',
+
+  // Tooltip batang.
+  'rata-rata': 'average',
+  'Naik {d} dari Semester {n}': 'Up {d} from Semester {n}',
+  'Turun {d} dari Semester {n}': 'Down {d} from Semester {n}',
+  'Sama dengan Semester {n}': 'Same as Semester {n}',
+  '{a} dari {b} mahasiswa di atas ambang {ambang}': '{a} of {b} students above the {ambang} threshold',
 }

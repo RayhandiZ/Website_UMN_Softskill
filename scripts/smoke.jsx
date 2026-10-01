@@ -874,80 +874,193 @@ export function ujiKurva() {
 }
 
 // Yang paling dijaga: tinggi tiap batang sebanding nilainya dari nol, diukur dari piksel.
-const TINGGI_BATANG = 120
+const TINGGI_BATANG = 220
+
+function bacaGrafik(bingkai) {
+  const batang = [...bingkai.querySelectorAll('span')].filter((n) => n.className.includes('rounded-t-[4px]'))
+  const pemicu = bingkai.querySelector('button[aria-haspopup="listbox"]')
+  const daftar = bingkai.querySelector('[role="listbox"]')
+  return {
+    batang: batang.map((b) => ({
+      tinggi: parseFloat(b.style.height),
+      latar: b.style.background,
+      kelas: b.className,
+      label: b.previousElementSibling?.textContent ?? '',
+      adaTitle: b.hasAttribute('title'),
+      labelKelas: b.previousElementSibling?.className ?? '',
+    })),
+    pemicu,
+    teksPemicu: pemicu?.textContent ?? '',
+    terbuka: pemicu?.getAttribute('aria-expanded') === 'true',
+    daftar,
+    opsi: daftar ? [...daftar.querySelectorAll('[role="option"]')] : [],
+    labelSumbu: [...bingkai.querySelectorAll('span.tabular-nums')].map((n) => n.textContent),
+    ambang: [...bingkai.querySelectorAll('span')].filter((n) => n.className.includes('border-dashed')),
+    kalimatBatang: [...bingkai.querySelectorAll('[role="listitem"]')].map((n) => n.getAttribute('aria-label')),
+    teks: bingkai.textContent,
+  }
+}
+
+const tekan = (node, key) =>
+  act(async () => {
+    node.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  })
+// Menunggu animasi tutup dan pengaman waktunya (180ms) selesai.
+const tungguTutup = () =>
+  act(async () => {
+    await new Promise((r) => setTimeout(r, 220))
+  })
 
 export async function ujiPerkembangan() {
   const { el, lepas } = await pasang('/admin')
 
   const bingkai = [...el.querySelectorAll('section')].find((n) =>
-    /Perkembangan nilai tiap angkatan/.test(n.textContent),
+    /Perkembangan nilai per semester/.test(n.textContent),
   )
-  const panel = bingkai ? [...bingkai.querySelectorAll('div.rounded-xl.border')] : []
-  const batang = bingkai
-    ? [...bingkai.querySelectorAll('span')].filter((n) => n.className.includes('rounded-t-[4px]'))
-    : []
-
-  // Angka pada tiap batang duduk tepat sebelum batangnya.
-  const pasangan = batang.map((b) => ({
-    tinggi: parseFloat(b.style.height),
-    latar: b.style.background,
-    kelas: b.className,
-    label: b.previousElementSibling,
-  }))
-
-  const ambang = bingkai
-    ? [...bingkai.querySelectorAll('span')].filter((n) => n.className.includes('border-dashed'))
-    : []
-
-  const teksBingkai = bingkai?.textContent ?? ''
-  const namaSemester = bingkai
-    ? [...bingkai.querySelectorAll('span')].filter((n) => /^Semester \d$/.test(n.textContent))
-    : []
-
-  const tombolTabel = bingkai
-    ? [...bingkai.querySelectorAll('button')].find((n) => /Tabel/.test(n.textContent))
-    : null
-  let barisTabel = 0
-  let kepalaTabel = ''
-  if (tombolTabel) {
-    await klik(tombolTabel)
-    barisTabel = bingkai.querySelectorAll('tbody tr').length
-    kepalaTabel = [...bingkai.querySelectorAll('thead th')].map((n) => n.textContent).join('|')
-    await klik(tombolTabel)
+  if (!bingkai) {
+    lepas()
+    return { ada: false }
   }
 
+  const awal = bacaGrafik(bingkai)
+
+  const kolom = () => [...bingkai.querySelectorAll('[role="listitem"]')]
+  const tip = () => bingkai.querySelector('.animate-tip')
+  const jedaTip = () =>
+    act(async () => {
+      await new Promise((r) => setTimeout(r, 220))
+    })
+
+  await tunjuk(kolom()[1], 'pointerover')
+  const tipDua = tip()
+  const isiTipDua = tipDua?.textContent ?? ''
+  const batangDuaMenyala = [...kolom()[1].querySelectorAll('span')]
+    .find((n) => n.className.includes('rounded-t-[4px]'))
+    ?.className.includes('brightness-110')
+  const tipTersembunyiDariSR = tipDua?.getAttribute('aria-hidden') === 'true'
+  // Tetikus pindah dari kolom ke tooltip sebelum jedanya habis: tooltip tidak boleh lenyap.
+  await tunjuk(kolom()[1], 'pointerout')
+  await tunjuk(tipDua, 'pointerover')
+  await jedaTip()
+  const tetapSaatDiTip = !!tip()
+  await tunjuk(tipDua, 'pointerout')
+  await jedaTip()
+  const hilangSetelahLepas = !tip()
+
+  await act(async () => {
+    kolom()[0].focus()
+  })
+  const isiTipSatu = tip()?.textContent ?? ''
+  await act(async () => {
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+  })
+  const escapeMenyembunyikan = !tip() && document.activeElement === kolom()[0]
+  await act(async () => {
+    kolom()[0].blur()
+  })
+
+  await klik(awal.pemicu, 1)
+  const buka = bacaGrafik(bingkai)
+  const opsiTerpilih = buka.opsi.find((o) => o.getAttribute('aria-selected') === 'true')
+  const fokusAwal = document.activeElement === opsiTerpilih && opsiTerpilih.textContent.startsWith('Semester 3')
+  // Dibaca sekarang: elemennya hidup, dan di akhir uji panelnya sudah ditutup lagi.
+  const bukaKlik =
+    buka.terbuka &&
+    buka.opsi.length === 3 &&
+    buka.pemicu.getAttribute('aria-controls') === buka.daftar?.id &&
+    buka.daftar.className.includes('animate-kaca')
+
+  await tekan(document.activeElement, 'ArrowUp')
+  const fokusNaik = document.activeElement?.textContent.startsWith('Semester 2')
+  await tekan(document.activeElement, 'Enter')
+  const sesudahEnter = bacaGrafik(bingkai)
+  const fokusKembali = document.activeElement === sesudahEnter.pemicu
+  const sedangSurut = sesudahEnter.daftar?.className.includes('animate-surut') ?? false
+  await tungguTutup()
+  const dua = bacaGrafik(bingkai)
+
+  await tekan(dua.pemicu, 'ArrowDown')
+  const bukaPapan = bacaGrafik(bingkai)
+  const fokusDiTerpilih = document.activeElement?.getAttribute('aria-selected') === 'true'
+  await tekan(document.activeElement, 'Home')
+  await tekan(document.activeElement, ' ')
+  await tungguTutup()
+  const satu = bacaGrafik(bingkai)
+
+  await tekan(satu.pemicu, 'ArrowDown')
+  await tekan(document.activeElement, 'End')
+  await tekan(document.activeElement, 'Escape')
+  await tungguTutup()
+  const sesudahEscape = bacaGrafik(bingkai)
+  const escapeKembali = document.activeElement === sesudahEscape.pemicu
+
+  await klik(sesudahEscape.pemicu, 1)
+  await act(async () => {
+    document.body.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+  })
+  await tungguTutup()
+  const sesudahLuar = bacaGrafik(bingkai)
+
+  await klik(sesudahLuar.pemicu, 1)
+  await klik(bacaGrafik(bingkai).opsi.find((o) => o.textContent.startsWith('Semester 3')), 1)
+  await tungguTutup()
+  const tiga = bacaGrafik(bingkai)
+
+  const tombolTabel = [...bingkai.querySelectorAll('button')].find((n) => /Tabel/.test(n.textContent))
+  await klik(tombolTabel)
+  const barisTabel = [...bingkai.querySelectorAll('tbody tr')].map((tr) =>
+    [...tr.querySelectorAll('td')].map((td) => td.textContent),
+  )
+  const kepalaTabel = [...bingkai.querySelectorAll('thead th')].map((n) => n.textContent).join('|')
+  await klik(tombolTabel)
+
+  const semua = [...awal.batang, ...dua.batang, ...satu.batang]
   const hasil = {
-    ada: Boolean(bingkai),
-    jumlahPanel: panel.length,
-    // 2026 satu semester, 2025 Genap dua, 2025 dan 2024 tiga: sembilan batang.
-    jumlahBatang: batang.length,
-    tiapBatangBerangka: pasangan.length > 0 && pasangan.every((p) => /^\d+$/.test(p.label?.textContent ?? '')),
-    dariNol:
-      pasangan.length > 0 &&
-      pasangan.every((p) => Math.abs((p.tinggi / TINGGI_BATANG) * 100 - Number(p.label?.textContent)) < 0.6),
-    rampOrdinal: pasangan.length > 0 && pasangan.every((p) => /var\(--semester-\d/.test(p.latar)),
-    // Batang paling tebal 24px, ujung data membulat 4px, pangkal di garis dasar tetap persegi.
-    lebarBatang: pasangan.every((p) => p.kelas.includes('w-6')),
-    ujungBulat: pasangan.every(
-      (p) => p.kelas.includes('rounded-t-[4px]') && !p.kelas.split(' ').some((k) => /^rounded(-full|-md|-lg|-xl)?$/.test(k)),
+    ada: true,
+    tertutupAwal: awal.teksPemicu === 'Semester 3' && !awal.terbuka && !awal.daftar,
+    bukaKlik,
+    keteranganOpsi: buka.opsi.map((o) => o.textContent.replace(/^Semester \d/, '')).join('|'),
+    fokusKeTerpilih: fokusAwal,
+    fokusNaik,
+    enterMemilih: sesudahEnter.teksPemicu === 'Semester 2' && !sesudahEnter.terbuka && fokusKembali,
+    tutupBeranimasi: sedangSurut && !dua.daftar,
+    // Satu batang per semester yang ditampilkan, tidak pernah batang nol untuk semester lain (R2).
+    jumlahBatang: [awal.batang.length, dua.batang.length, satu.batang.length, tiga.batang.length].join(','),
+    panahBawahMembuka: bukaPapan.terbuka && fokusDiTerpilih,
+    homeSpasiMemilih: satu.teksPemicu === 'Semester 1' && /290 mahasiswa/.test(satu.teks) && /belum ada pembanding/.test(satu.teks),
+    escapeBatal: sesudahEscape.teksPemicu === 'Semester 1' && !sesudahEscape.daftar && escapeKembali,
+    klikLuarMenutup: !sesudahLuar.terbuka && !sesudahLuar.daftar,
+    klikOpsi: tiga.teksPemicu === 'Semester 3' && tiga.batang.length === 3,
+    penjelasanDua: /219 mahasiswa/.test(dua.teks) && /Naik 3 sejak Semester 1/.test(dua.teks),
+    dariNol: semua.every((b) => Math.abs((b.tinggi / TINGGI_BATANG) * 100 - Number(b.label)) < 0.6),
+    angkaBatang: awal.batang.map((b) => b.label).join(','),
+    rampOrdinal: semua.every((b) => /var\(--semester-\d/.test(b.latar)),
+    ujungBulat: semua.every(
+      (b) => b.kelas.includes('rounded-t-[4px]') && !b.kelas.split(' ').some((k) => /^rounded(-full|-md|-lg|-xl)?$/.test(k)),
     ),
-    angkaWarnaTeks: pasangan.every((p) => p.label?.className.includes('text-ink')),
-    // Semester yang belum dibuka tidak punya batang sama sekali (R2): 2026 dua, 2025 Genap satu.
-    belumDibuka: (teksBingkai.match(/Belum dibuka/g) ?? []).length,
-    // Ambang 70 dari tinggi 120: 84px dari garis dasar.
-    ambangPutus: ambang.length === panel.length && ambang.every((n) => Math.abs(parseFloat(n.style.bottom) - 84) < 0.01),
-    namaSemesterLengkap: namaSemester.length === panel.length * 3,
-    skala0100: /Skala 0 sampai 100, sama untuk semua panel/.test(teksBingkai),
-    alasanTertulis: /isinya mahasiswa yang berbeda/.test(teksBingkai),
-    barisTabel,
+    angkaWarnaTeks: semua.every((b) => b.labelKelas.includes('text-ink')),
+    sumbuNilai: awal.labelSumbu.join(','),
+    // Ambang 70 dari tinggi 220: 154px dari garis dasar.
+    ambangPutus: awal.ambang.length === 1 && Math.abs(parseFloat(awal.ambang[0].style.bottom) - 154) < 0.01,
+    kalimatBatang: awal.kalimatBatang,
+    tipMuncul: /Semester 2/.test(isiTipDua) && /80rata-rata/.test(isiTipDua),
+    tipPerubahan: /Naik 3 dari Semester 1/.test(isiTipDua),
+    tipAmbang: /\d+ dari 148 mahasiswa di atas rata-rata 70/.test(isiTipDua),
+    batangDuaMenyala,
+    tipTersembunyiDariSR,
+    tetapSaatDiTip,
+    hilangSetelahLepas,
+    tipFokus: /Semester 1/.test(isiTipSatu) && /77rata-rata/.test(isiTipSatu) && !/Naik|Turun|Sama dengan/.test(isiTipSatu),
+    escapeMenyembunyikan,
+    tanpaTitleBawaan: awal.batang.every((x) => !x.adaTitle),
+    penjelasan3: /Naik 5 sejak Semester 1/.test(awal.teks) && /148 mahasiswa/.test(awal.teks) && /angkatan 2024 dan 2025/.test(awal.teks),
+    ambangNaik: /84% → 85% → 91%/.test(awal.teks),
     kepalaTabel,
-    adaPembandingKosong: /belum ada pembanding/.test(teksBingkai),
-    adaKenaikan: /Naik \d+ sejak Semester/.test(teksBingkai),
-    urutanTertuaDulu: /^2024/.test(panel[0]?.textContent ?? ''),
-    labelAmbangLangsung: panel.length > 0 && panel.every((p) => [...p.querySelectorAll('span')].some((n) => n.textContent === '70')),
-    kalimatPembacaLayar:
-      panel.length > 0 &&
-      panel.every((p) => /^Semester 1: (\d+|Belum dibuka), Semester 2: /.test(p.querySelector('[role="img"]')?.getAttribute('aria-label') ?? '')),
+    // Baris per angkatan ditambah satu baris gabungan yang sama dengan batangnya.
+    barisTabel: barisTabel.map((r) => r[0]).join(','),
+    gabunganSamaDenganBatang:
+      barisTabel.at(-1)?.slice(2, 5).join(',') === awal.batang.map((b) => b.label).join(',') &&
+      barisTabel.at(-1)?.[1] === '148',
   }
 
   lepas()
@@ -994,84 +1107,111 @@ export async function ujiTrenSemester(sem) {
   const { el, lepas } = await pasang('/mahasiswa')
 
   const judul = el.textContent
-  const grafik = el.querySelector('[role="img"]')
+  const daftarKolom = el.querySelector('[role="list"][aria-label="Nilai per semester"]')
+  const grafik = daftarKolom ? daftarKolom.parentElement : null
+  const wadah = grafik ? grafik.parentElement.parentElement : null
   const svg = grafik ? grafik.querySelector('svg') : null
 
-  /* Titiknya span HTML mutlak di dalam bidang, bukan <circle>. */
-  const titik = grafik
-    ? [...grafik.querySelectorAll('span[style*="left"]')].filter((n) =>
-        /rounded-full/.test(n.className),
-      )
+  /* Titiknya span HTML mutlak di dalam bidang, bukan <circle>. Dua seri dibedakan dari warnanya. */
+  const semuaTitik = grafik
+    ? [...grafik.querySelectorAll('span[style*="left"]')].filter((n) => /rounded-full/.test(n.className))
     : []
+  const seriTitik = (warna) => semuaTitik.filter((n) => (n.style.background || n.style.borderColor).includes(warna))
+  const titikSemester = seriTitik('brand-ink')
+  const titikKumulatif = seriTitik('text-muted')
 
   const jalur = svg ? [...svg.querySelectorAll('path')] : []
   const d = jalur.map((n) => n.getAttribute('d') ?? '').join(' ')
-  const y = jalur.flatMap((n) => koordinatY(n.getAttribute('d') ?? ''))
+  const yTop = (n) => parseFloat(String(n.getAttribute('style')).match(/top:\s*([\d.]+)%/)?.[1])
 
-  /* Ordinat tiap titik data, dibaca dari gaya inlinenya. Dipakai sebagai
-     pembanding: kurva tidak boleh keluar dari rentang ini. */
-  const yTitik = titik
-    .map((n) => parseFloat(String(n.getAttribute('style')).match(/top:\s*([\d.]+)%/)?.[1]))
-    .filter(Number.isFinite)
+  /* Tiap kurva tidak boleh keluar dari rentang ordinat titik seri-nya sendiri. */
+  const takMelampauiSeri = (warna, titik) => {
+    const ys = titik.map(yTop).filter(Number.isFinite)
+    const milik = jalur.filter((n) => n.getAttribute('stroke').includes(warna))
+    return ys.length > 0 && milik.every((n) =>
+      koordinatY(n.getAttribute('d') ?? '').every((v) => v >= Math.min(...ys) - 0.01 && v <= Math.max(...ys) + 0.01),
+    )
+  }
 
-  /* Garis bantu horizontal: <line> tanpa strokeDasharray. Garis ambang punya
-     dasharray, jadi tidak ikut terhitung. */
+  /* Garis bantu horizontal: <line> tanpa strokeDasharray dan tidak tegak. */
+  const garisTegak = () => (svg ? [...svg.querySelectorAll('line')].filter((n) => n.getAttribute('x1') === n.getAttribute('x2')) : [])
   const bantu = svg
-    ? [...svg.querySelectorAll('line')].filter((n) => !n.getAttribute('stroke-dasharray'))
+    ? [...svg.querySelectorAll('line')].filter((n) => !n.getAttribute('stroke-dasharray') && n.getAttribute('x1') !== n.getAttribute('x2'))
     : []
 
-  /* Dibaca dari lajur sumbunya sendiri, bukan dari seluruh halaman. Kalau
-     disapu dari mana saja, angka bertabular-nums milik bagian lain ikut
-     terhitung dan pemeriksaan "tiap garis bantu punya labelnya" berubah jadi
-     kebetulan belaka. */
   const lajurSumbu = grafik ? grafik.previousElementSibling : null
   const sumbu = lajurSumbu
-    ? [...lajurSumbu.querySelectorAll('span')]
-        .map((n) => Number(n.textContent))
-        .filter((n) => Number.isFinite(n))
+    ? [...lajurSumbu.querySelectorAll('span')].map((n) => Number(n.textContent)).filter((n) => Number.isFinite(n))
     : []
 
-  /* Baris nama semester duduk tepat setelah bidang gambarnya. Disasar begitu,
-     bukan lewat seluruh halaman: "Semester 1" juga muncul di kartu Perjalanan
-     Semester di bawah, dan tanpa penyasaran ini pemeriksaannya akan tetap
-     lulus meskipun label di grafiknya hilang sama sekali. */
   const barisLabel = grafik ? grafik.parentElement.nextElementSibling : null
-  const namaSemester = barisLabel
-    ? [...barisLabel.querySelectorAll('span')].map((n) => n.textContent)
-    : []
+  const labelSemester = barisLabel ? [...barisLabel.querySelectorAll(':scope > span')] : []
+
+  const kolom = daftarKolom ? [...daftarKolom.querySelectorAll('[role="listitem"]')] : []
+  const tip = () => (wadah ? wadah.querySelector('.animate-tip') : null)
+  // Angka besar di kartu nilai akhir: pembanding untuk titik kumulatif terakhir.
+  const angkaBesar = Number([...el.querySelectorAll('p')].find((n) => /text-\[56px\]/.test(n.className))?.textContent)
 
   const hasil = {
     adaTren: /Nilai per semester/.test(judul),
     adaSebaran: /Sebaran nilai aspek/.test(judul),
-    jumlahTitik: titik.length,
+    legenda: /Nilai semester/.test(wadah?.textContent ?? '') && /Nilai kumulatif/.test(wadah?.textContent ?? ''),
+    jumlahTitikSemester: titikSemester.length,
+    jumlahTitikKumulatif: titikKumulatif.length,
     jumlahJalur: jalur.length,
-    /* Satu ruas per pasangan semester berurutan: C untuk kurva, L untuk dua
-       titik yang tidak perlu dilengkungkan. */
     jumlahRuas: (d.match(/[CL]/g) ?? []).length,
-    /* Tebal garis tidak boleh ikut teregang oleh preserveAspectRatio="none". */
     garisTakTeregang: jalur.every((n) => n.getAttribute('vector-effect') === 'non-scaling-stroke'),
-    /* Kurva yang tidak diisi. Path ber-fill akan jadi bidang gelap, bukan garis. */
     takTerisi: jalur.every((n) => n.getAttribute('fill') === 'none'),
-    datar: y.length > 0 && y.every((v) => Math.abs(v - y[0]) < 0.01),
-    /* INTI PEMERIKSAANNYA. Sumbu Y terbalik (0 di atas), jadi "melampaui"
-       berarti ada koordinat jalur di luar rentang ordinat titik datanya. */
-    takMelampaui:
-      yTitik.length > 0 &&
-      y.every((v) => v >= Math.min(...yTitik) - 0.01 && v <= Math.max(...yTitik) + 0.01),
+    takMelampaui: takMelampauiSeri('brand-ink', titikSemester) && takMelampauiSeri('text-muted', titikKumulatif),
     garisBantu: bantu.length,
-    /* Label sumbu harus sama banyak dengan garis bantunya, kalau tidak ada
-       garis yang tidak punya angka -- dan garis tanpa angka tidak bisa dibaca. */
     labelSecocokGaris: bantu.length > 0 && sumbu.length === bantu.length,
     ringkasTetap: /Tetap sejak Semester/.test(judul),
     ringkasNaik: /Naik \d+ sejak Semester/.test(judul),
-    /* Ditulis lengkap, bukan disingkat. */
     labelSemuaSemester:
-      namaSemester.length === 3 &&
-      ['Semester 1', 'Semester 2', 'Semester 3'].every((s) => namaSemester.includes(s)),
+      labelSemester.length === 3 && ['Semester 1', 'Semester 2', 'Semester 3'].every((s) => labelSemester.some((n) => n.textContent === s)),
+    // Semester terkunci bergembok, tidak diredupkan (redup menjatuhkan kontrasnya).
+    gembokTerkunci: labelSemester.filter((n) => n.querySelector('svg')).length,
+    tanpaRedup: labelSemester.every((n) => !/opacity-|text-ink-3/.test(n.className)),
     sumbuTertulis: sumbu.length > 0,
     lebarJendela: sumbu.length >= 2 ? Math.max(...sumbu) - Math.min(...sumbu) : null,
-    /* Label sumbu harus kelipatan yang enak dibaca, bukan pecahan. */
     sumbuBulat: sumbu.every((v) => Number.isInteger(v)),
+    // Hanya semester bernilai yang bisa dipilih.
+    jumlahKolom: kolom.length,
+    tanpaTipAwal: !tip() && garisTegak().length === 0,
+  }
+
+  if (kolom.length) {
+    const terakhir = kolom[kolom.length - 1]
+    hasil.kalimatKolom = terakhir.getAttribute('aria-label')
+
+    await act(async () => {
+      terakhir.focus()
+    })
+    const isi = tip()?.textContent ?? ''
+    hasil.isiTip = isi
+    hasil.garisTegak = garisTegak().length
+    hasil.titikBerongga = semuaTitik.filter((n) => n.className.includes('bg-surface')).length
+    hasil.labelTerpilihTebal = labelSemester.some((n) => n.className.includes('font-bold'))
+    // Kumulatif di semester terakhir harus sama persis dengan angka besar.
+    const m = isi.match(/Nilai kumulatif:(\d+)/)
+    hasil.kumulatifSamaAngkaBesar = m ? Number(m[1]) === angkaBesar : false
+    hasil.tipTersembunyiDariSR = tip()?.getAttribute('aria-hidden') === 'true'
+
+    await act(async () => {
+      document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    })
+    hasil.escapeMenyembunyikan = !tip() && document.activeElement === terakhir
+    await act(async () => {
+      terakhir.blur()
+    })
+
+    await tunjuk(kolom[0], 'pointerover')
+    hasil.tunjukMenampilkan = /Semester:1/.test(tip()?.textContent ?? '')
+    await tunjuk(kolom[0], 'pointerout')
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 220))
+    })
+    hasil.lepasMenyembunyikan = !tip()
   }
 
   lepas()

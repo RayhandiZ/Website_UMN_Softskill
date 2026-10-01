@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { HurufBadge, ScoreBar, StatusTeks, Terkunci } from '../../components/Ui'
 import {
@@ -16,6 +16,8 @@ import { useStudent } from './StudentLayout'
 import { useStore } from '../../lib/store'
 import { useTeks } from '../../lib/bahasa'
 import { jalurMulus, jendelaNilai } from '../../lib/kurva'
+import { nilaiKumulatif } from '../../lib/scoring'
+import { useTunjuk } from '../../lib/tunjuk'
 
 /* --------------------------------------------------------------------------
    Dashboard mahasiswa.
@@ -158,7 +160,7 @@ function SebaranAspek({ t }) {
         label itulah yang menipu, bukan sumbu terpotongnya sendiri.
 
    Semester yang belum dibuka tidak digambar sebagai nol dan garisnya tidak
-   diteruskan ke sana (R2) -- hanya nama semesternya yang tampil, diredupkan.
+   diteruskan ke sana (R2) -- hanya nama semesternya yang tampil, bertanda gembok.
    -------------------------------------------------------------------------- */
 
 /* Tinggi bidang gambar dalam piksel. Dipakai dua kali: oleh bidangnya sendiri
@@ -170,8 +172,13 @@ function TrenSemester({ t }) {
   const teks = useTeks()
   const daftar = Object.values(t.semester)
   const dinilai = daftar.filter((s) => s.nilai != null)
+  // Nilai akhir bila dihitung sampai semester itu. Di semester terakhir sama dengan angka besar di kiri.
+  const kumulatif = Object.fromEntries(dinilai.map((s) => [s.semester, nilaiKumulatif(t, s.semester)]))
 
-  const { bawah, atas, garis: garisBantu } = jendelaNilai(dinilai.map((s) => s.nilai))
+  const { bawah, atas, garis: garisBantu } = jendelaNilai([
+    ...dinilai.map((s) => s.nilai),
+    ...dinilai.map((s) => kumulatif[s.semester]),
+  ])
 
   /* Koordinat dalam persen; SVG-nya memakai viewBox 0 0 100 100 dengan
      preserveAspectRatio="none" supaya ikut melebar mengikuti kartu.
@@ -184,17 +191,24 @@ function TrenSemester({ t }) {
   const px = (sem) => (n === 1 ? 50 : 4 + ((sem - 1) / (n - 1)) * 92)
   const py = (nilai) => ((atas - nilai) / (atas - bawah)) * 100
 
-  const titik = dinilai.map((sem) => ({ sem, x: px(sem.semester), y: py(sem.nilai) }))
-
   /* Kurva hanya ditarik melintasi semester yang BERURUTAN. Kalau ada semester
      tanpa nilai di tengah, kurvanya diputus jadi dua, bukan dilompati --
      melompatinya berarti mengarang perubahan yang datanya tidak menyatakan. */
-  const runtun = []
-  for (const k of titik) {
-    const terakhir = runtun[runtun.length - 1]
-    if (terakhir && k.sem.semester === terakhir[terakhir.length - 1].sem.semester + 1) terakhir.push(k)
-    else runtun.push([k])
+  const runtun = (ambil) => {
+    const hasil = []
+    for (const s of dinilai) {
+      const k = { sem: s, x: px(s.semester), y: py(ambil(s)) }
+      const terakhir = hasil[hasil.length - 1]
+      if (terakhir && s.semester === terakhir[terakhir.length - 1].sem.semester + 1) terakhir.push(k)
+      else hasil.push([k])
+    }
+    return hasil
   }
+  const SERI = [
+    { kunci: 'semester', label: 'Nilai semester', warna: 'var(--brand-ink)', tebal: 2.5, ambil: (s) => s.nilai },
+    // Abu-abu: konteks, bukan pokok. Warna area (oranye, hijau) sudah punya arti lain di halaman ini.
+    { kunci: 'kumulatif', label: 'Nilai kumulatif', warna: 'var(--text-muted)', tebal: 2, ambil: (s) => kumulatif[s.semester] },
+  ]
 
   const mulai = dinilai[0]
   const kini = dinilai[dinilai.length - 1]
@@ -209,22 +223,60 @@ function TrenSemester({ t }) {
   const ambang = CONFIG.AMBANG_SERTIFIKAT
   const ambangTampil = ambang > bawah && ambang < atas
 
+  // Area ketuk tiap semester melebar sampai separuh jarak ke tetangganya, bukan hanya titik 10px.
+  const kolom = dinilai.map((s) => {
+    const i = daftar.indexOf(s)
+    const kiri = i === 0 ? 0 : (px(daftar[i - 1].semester) + px(s.semester)) / 2
+    const kanan = i === n - 1 ? 100 : (px(s.semester) + px(daftar[i + 1].semester)) / 2
+    return { s, kiri, lebar: kanan - kiri }
+  })
+
+  const { aktif, titik: pegangan, tip: peganganTip } = useTunjuk()
+  const pilih = aktif != null ? dinilai[aktif] : null
+
+  const wadah = useRef(null)
+  const bidang = useRef(null)
+  const tipRef = useRef(null)
+  const [posisi, setPosisi] = useState(null)
+
+  // Di atas bidang grafik, berpusat pada semester terpilih, digeser masuk bila menabrak tepi.
+  useLayoutEffect(() => {
+    if (!pilih) {
+      setPosisi(null)
+      return
+    }
+    const w = wadah.current.getBoundingClientRect()
+    const b = bidang.current.getBoundingClientRect()
+    const tip = tipRef.current.getBoundingClientRect()
+    const tengah = b.left - w.left + (px(pilih.semester) / 100) * b.width
+    const kiri = Math.min(Math.max(tengah - tip.width / 2, 0), Math.max(0, w.width - tip.width))
+    setPosisi((lama) => ({ kiri, atas: b.top - w.top - tip.height - 8, geser: lama != null }))
+  }, [pilih])
+
   return (
-    <div>
+    <div ref={wadah} className="relative">
       <p className="flex items-baseline justify-between gap-3">
         <span className="text-[13px] font-semibold text-ink-2">{teks('Nilai per semester')}</span>
         <span className="shrink-0 text-[12.5px] font-bold text-ink-2">{ringkas}</span>
+      </p>
+      <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] text-ink-2">
+        {SERI.map((r) => (
+          <span key={r.kunci} className="inline-flex items-center gap-1.5">
+            <span className="h-[3px] w-3 rounded-full" style={{ background: r.warna }} />
+            {teks(r.label)}
+          </span>
+        ))}
       </p>
 
       <div className="mt-3 flex gap-2">
         {/* Label sumbu Y, satu di tiap garis bantu. Selain memberi acuan baca,
             angka-angka inilah yang menyatakan bahwa sumbunya TIDAK mulai dari
             nol. Sumbu terpotong yang tidak dilabeli itulah yang menyesatkan. */}
-        <div className="relative w-[26px] shrink-0" style={{ height: TINGGI_BAGAN }}>
+        <div aria-hidden="true" className="relative w-[26px] shrink-0" style={{ height: TINGGI_BAGAN }}>
           {garisBantu.map((v) => (
             <span
               key={v}
-              className="absolute right-0 -translate-y-1/2 text-[10.5px] font-semibold tabular-nums text-ink-3"
+              className="absolute right-0 -translate-y-1/2 text-[10.5px] font-semibold tabular-nums text-ink-2"
               style={{ top: py(v) + '%' }}
             >
               {v}
@@ -232,15 +284,7 @@ function TrenSemester({ t }) {
           ))}
         </div>
 
-        <div
-          role="img"
-          aria-label={teks(
-            'Grafik nilai per semester, Semester {a} sebesar {na} sampai Semester {b} sebesar {nb}. {ringkas}',
-            { a: mulai.semester, na: mulai.nilai, b: kini.semester, nb: kini.nilai, ringkas },
-          )}
-          className="relative min-w-0 flex-1"
-          style={{ height: TINGGI_BAGAN }}
-        >
+        <div ref={bidang} className="relative min-w-0 flex-1" style={{ height: TINGGI_BAGAN }}>
           <svg
             aria-hidden="true"
             viewBox="0 0 100 100"
@@ -273,60 +317,138 @@ function TrenSemester({ t }) {
               />
             ) : null}
 
-            {runtun.map((deret) =>
-              deret.length < 2 ? null : (
-                <path
-                  key={deret[0].sem.semester}
-                  d={jalurMulus(deret)}
-                  fill="none"
-                  stroke="var(--brand-ink)"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  /* Tanpa ini, preserveAspectRatio="none" ikut meregangkan
-                     tebal garisnya: tipis saat melintang, tebal saat menanjak. */
-                  vectorEffect="non-scaling-stroke"
-                />
+            {pilih ? (
+              <line
+                x1={px(pilih.semester)}
+                x2={px(pilih.semester)}
+                y1="0"
+                y2="100"
+                stroke="var(--border-strong)"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
+
+            {/* Kumulatif digambar lebih dulu supaya garis semester, yang jadi pokok, berada di atasnya. */}
+            {[...SERI].reverse().map((r) =>
+              runtun(r.ambil).map((deret) =>
+                deret.length < 2 ? null : (
+                  <path
+                    key={r.kunci + deret[0].sem.semester}
+                    d={jalurMulus(deret)}
+                    fill="none"
+                    stroke={r.warna}
+                    strokeWidth={r.tebal}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    /* Tanpa ini, preserveAspectRatio="none" ikut meregangkan
+                       tebal garisnya: tipis saat melintang, tebal saat menanjak. */
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ),
               ),
             )}
           </svg>
 
-          {/* Titiknya HTML, bukan SVG: lingkaran di dalam viewBox yang
-              diregangkan akan jadi lonjong. */}
-          {titik.map((k) => (
-            <span
-              key={k.sem.semester}
-              title={teks('Semester {n}', { n: k.sem.semester }) + ': ' + k.sem.nilai}
-              className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-ink ring-2 ring-[var(--surface)]"
-              style={{ left: k.x + '%', top: k.y + '%' }}
-            />
-          ))}
+          {/* Titiknya HTML, bukan SVG: lingkaran di dalam viewBox yang diregangkan akan jadi lonjong.
+              Titik yang terpilih berubah jadi cincin berongga, seperti penanda pada contoh. */}
+          {[...SERI].reverse().map((r) =>
+            dinilai.map((s) => {
+              const terpilih = pilih === s
+              return (
+                <span
+                  key={r.kunci + s.semester}
+                  aria-hidden="true"
+                  className={
+                    'pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-[width,height] duration-150 ' +
+                    (terpilih ? 'h-3.5 w-3.5 border-[2.5px] bg-surface' : r.kunci === 'semester' ? 'h-2.5 w-2.5 ring-2 ring-surface' : 'h-2 w-2 ring-2 ring-surface')
+                  }
+                  style={{
+                    left: px(s.semester) + '%',
+                    top: py(r.ambil(s)) + '%',
+                    background: terpilih ? undefined : r.warna,
+                    borderColor: terpilih ? r.warna : undefined,
+                  }}
+                />
+              )
+            }),
+          )}
+
+          <div role="list" aria-label={teks('Nilai per semester')} className="absolute inset-0">
+            {kolom.map(({ s, kiri, lebar }, i) => (
+              <div
+                key={s.semester}
+                role="listitem"
+                tabIndex={0}
+                aria-label={
+                  teks('Semester {n}', { n: s.semester }) +
+                  ': ' +
+                  SERI.map((r) => teks(r.label) + ' ' + r.ambil(s)).join(', ')
+                }
+                {...pegangan(i)}
+                // Penanda fokusnya garis vertikal, titik berongga, dan kotak info, bukan garis kolom.
+                className="absolute inset-y-0 cursor-pointer focus-visible:outline-none"
+                style={{ left: kiri + '%', width: lebar + '%' }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Nama semester, ditulis lengkap dan ditempatkan di bawah titiknya
-          masing-masing. Semester yang belum dibuka tetap tertulis -- tanpa itu
-          mahasiswa semester dua akan mengira programnya hanya sampai situ.
-
-          Label pertama dan terakhir dirapatkan ke tepinya, bukan dipusatkan
-          pada titiknya. "Semester 1" yang dipusatkan di 4% akan separuhnya
-          keluar dari bidang; ini cara baku menambatkan label ujung, dan
-          pergeserannya tidak sampai membuat orang salah pasang label. */}
-      <div className="relative mt-1.5 ml-[34px] mr-1 h-4">
+      {/* Nama semester, ditulis lengkap di bawah titiknya. Semester yang belum
+          dibuka tetap tertulis, dengan gembok, supaya mahasiswa melihat seluruh
+          programnya. Label pertama dan terakhir dirapatkan ke tepi supaya tidak
+          separuhnya keluar dari bidang. */}
+      <div aria-hidden="true" className="relative ml-[34px] mr-1 mt-1.5 h-4">
         {daftar.map((sem, i) => (
           <span
             key={sem.semester}
             className={
-              'absolute whitespace-nowrap text-[11px] text-ink-3' +
-              (i === 0 ? '' : i === daftar.length - 1 ? ' -translate-x-full' : ' -translate-x-1/2') +
-              (sem.nilai == null ? ' opacity-55' : '')
+              'absolute inline-flex items-center gap-1 whitespace-nowrap text-[11px] ' +
+              (pilih === sem ? 'font-bold text-ink ' : 'text-ink-2 ') +
+              (i === 0 ? '' : i === daftar.length - 1 ? '-translate-x-full' : '-translate-x-1/2')
             }
             style={{ left: px(sem.semester) + '%' }}
           >
+            {sem.nilai == null ? <IconLock size={11} className="shrink-0" /> : null}
             {teks('Semester {n}', { n: sem.semester })}
           </span>
         ))}
       </div>
+
+      {/* Isinya sama dengan aria-label kolom, jadi disembunyikan dari pembaca layar.
+          Di layar sentuh tembus ketukan, supaya tidak menelan ketukan ke tombol di bawahnya. */}
+      {pilih ? (
+        <div
+          ref={tipRef}
+          aria-hidden="true"
+          {...peganganTip}
+          className="absolute z-20 w-max rounded-xl border border-line bg-surface px-3.5 py-2.5 shadow-pop animate-tip [@media(hover:none)]:pointer-events-none"
+          style={{
+            left: posisi?.kiri ?? 0,
+            top: posisi?.atas ?? 0,
+            visibility: posisi ? 'visible' : 'hidden',
+            transition: posisi?.geser ? 'left .18s cubic-bezier(.22,.68,.35,1)' : 'none',
+          }}
+        >
+          <div className="grid grid-cols-[auto_auto_auto] items-center gap-x-2 gap-y-1 text-[12.5px]">
+            <span className="font-bold text-ink">{teks('Semester')}</span>
+            <span className="text-ink-2">:</span>
+            <span className="font-bold text-ink">{pilih.semester}</span>
+            {SERI.map((r) => (
+              <Fragment key={r.kunci}>
+                {/* Garis pendek berwarna seri, bukan teks berwarna: abu muda seri kumulatif hanya 3,22:1, kurang untuk teks kecil. */}
+                <span className="inline-flex items-center gap-1.5 text-ink-2">
+                  <span className="h-[3px] w-3 shrink-0 rounded-full" style={{ background: r.warna }} />
+                  {teks(r.label)}
+                </span>
+                <span className="text-ink-2">:</span>
+                <span className="font-bold tabular-nums text-ink">{r.ambil(pilih)}</span>
+              </Fragment>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
