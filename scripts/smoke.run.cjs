@@ -771,7 +771,7 @@ const RUTE = [
     ['sumbu samping 0 sampai 100, ambang 70 ditandai', pk.sumbuNilai === '0,20,40,60,80,100,70'],
     ['garis ambang putus-putus di 70', pk.ambangPutus],
     ['tiap batang punya kalimat lengkap untuk pembaca layar',
-      /^Semester 1: 77\. \d+ dari 148 mahasiswa di atas rata-rata 70$/.test(pk.kalimatBatang[0] ?? '') &&
+      /^Semester 1: 77\. \d+ dari 148 mahasiswa di atas rata-rata minimal 70$/.test(pk.kalimatBatang[0] ?? '') &&
       /^Semester 3: 82\. Naik 2 dari Semester 2\. \d+ dari 148 mahasiswa/.test(pk.kalimatBatang[2] ?? '')],
     ['tunjuk batang: tooltip muncul dengan nilainya', pk.tipMuncul],
     ['tooltip menyebut perubahan dari semester sebelumnya', pk.tipPerubahan],

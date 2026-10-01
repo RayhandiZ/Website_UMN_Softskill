@@ -126,7 +126,7 @@ function Batang({ kelompok }) {
     [
       t('Semester {n}', { n: x.sem }) + ': ' + x.nilai,
       perubahan(t, kelompok.batang, i),
-      t('{a} dari {b} mahasiswa di atas ambang {ambang}', { a: x.jumlahDiAtas, b: kelompok.jumlah, ambang }),
+      t('{a} dari {b} mahasiswa di atas rata-rata minimal {n}', { a: x.jumlahDiAtas, b: kelompok.jumlah, n: ambang }),
     ]
       .filter(Boolean)
       .join('. ')
@@ -254,10 +254,10 @@ function Batang({ kelompok }) {
             <p className="mt-2 text-[12px] font-bold text-ink">{perubahan(t, kelompok.batang, aktif)}</p>
           ) : null}
           <p className="mt-1 text-[12px] leading-snug text-ink-2">
-            {t('{a} dari {b} mahasiswa di atas rata-rata {ambang}', {
+            {t('{a} dari {b} mahasiswa di atas rata-rata minimal {n}', {
               a: b.jumlahDiAtas,
               b: kelompok.jumlah,
-              ambang,
+              n: ambang,
             })}
           </p>
         </div>
@@ -294,7 +294,9 @@ function Penjelasan({ kelompok }) {
           </dd>
         </div>
         <div>
-          <dt className="text-ink-2">{t('Di atas ambang {ambang}', { ambang })}</dt>
+          {/* Nama isian tanpa tanda hubung: { rata-rata: ... } dibaca "rata dikurangi rata" dan
+              menggagalkan kompilasi, sedangkan {rata-rata} tidak pernah terisi oleh penerjemah. */}
+          <dt className="text-ink-2">{t('Di atas rata-rata minimal {n}', { n: ambang })}</dt>
           <dd className="mt-0.5 font-bold tabular-nums text-ink">
             {kelompok.batang.map((b) => b.diAtas + '%').join(' → ')}
           </dd>

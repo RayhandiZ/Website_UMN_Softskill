@@ -462,8 +462,8 @@ export default function Profil() {
               </Tetap>
             </Baris>
             <Baris
-              label={t('Ambang sertifikat')}
-              catatan={t('Bobot dan ambang diubah lewat berkas konfigurasi oleh pengelola sistem.')}
+              label={t('Rata-rata minimal sertifikat')}
+              catatan={t('Bobot dan rata-rata minimal diubah lewat berkas konfigurasi oleh pengelola sistem.')}
             >
               <Tetap angka>{CONFIG.AMBANG_SERTIFIKAT}</Tetap>
             </Baris>

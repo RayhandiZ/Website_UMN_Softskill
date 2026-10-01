@@ -1045,7 +1045,7 @@ export async function ujiPerkembangan() {
     kalimatBatang: awal.kalimatBatang,
     tipMuncul: /Semester 2/.test(isiTipDua) && /80rata-rata/.test(isiTipDua),
     tipPerubahan: /Naik 3 dari Semester 1/.test(isiTipDua),
-    tipAmbang: /\d+ dari 148 mahasiswa di atas rata-rata 70/.test(isiTipDua),
+    tipAmbang: /\d+ dari 148 mahasiswa di atas rata-rata minimal 70/.test(isiTipDua),
     batangDuaMenyala,
     tipTersembunyiDariSR,
     tetapSaatDiTip,

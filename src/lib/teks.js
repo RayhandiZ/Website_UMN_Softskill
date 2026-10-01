@@ -113,7 +113,7 @@ export const EN = {
   'Sebaran nilai aspek': 'Aspect score spread',
   '{n} aspek dinilai': '{n} aspects graded',
   '{n} belum dibuka': '{n} not open yet',
-  'ambang {n}': 'threshold {n}',
+  'rata-rata minimal {n}': 'minimum average {n}',
   'Sebaran nilai {n} aspek pada skala 0 sampai 100, terendah {rendah}, tertinggi {tinggi}':
     'Spread of {n} aspect scores on a 0 to 100 scale, lowest {rendah}, highest {tinggi}',
   '{n} aspek belum dibuka': '{n} aspects not open yet',
@@ -334,9 +334,9 @@ export const EN = {
   'Periode aktif': 'Active period',
   'Cakupan program': 'Programme scope',
   'Semester 1 sampai {total}': 'Semester 1 to {total}',
-  'Ambang sertifikat': 'Certificate threshold',
-  'Bobot dan ambang diubah lewat berkas konfigurasi oleh pengelola sistem.':
-    'Weightings and thresholds are changed in the configuration file by the system administrator.',
+  'Rata-rata minimal sertifikat': 'Certificate minimum average',
+  'Bobot dan rata-rata minimal diubah lewat berkas konfigurasi oleh pengelola sistem.':
+    'Weightings and the minimum average are changed in the configuration file by the system administrator.',
   Telepon: 'Phone',
   Ponsel: 'Mobile',
   Alamat: 'Address',
@@ -864,7 +864,7 @@ export const EN = {
   'Belum ada nilai semester yang masuk, jadi perkembangan belum bisa dihitung. Masukkan nilai lewat halaman Input & Import Nilai, atau setujui usulan nilai dari dosen.':
     'No semester scores have come in yet, so progress cannot be calculated. Enter scores from the Score Entry & Import page, or approve a lecturer submission.',
   'angkatan {daftar}': 'cohorts {daftar}',
-  'Di atas ambang {ambang}': 'Above the {ambang} threshold',
+  'Di atas rata-rata minimal {n}': 'Above the minimum average of {n}',
   'Nilai rata-rata': 'Average score',
   'Semester 1 sampai {n}': 'Semester 1 to {n}',
   'Tampilkan sampai semester': 'Show up to semester',
@@ -874,5 +874,5 @@ export const EN = {
   'Naik {d} dari Semester {n}': 'Up {d} from Semester {n}',
   'Turun {d} dari Semester {n}': 'Down {d} from Semester {n}',
   'Sama dengan Semester {n}': 'Same as Semester {n}',
-  '{a} dari {b} mahasiswa di atas ambang {ambang}': '{a} of {b} students above the {ambang} threshold',
+  '{a} dari {b} mahasiswa di atas rata-rata minimal {n}': '{a} of {b} students above the minimum average of {n}',
 }

@@ -129,7 +129,7 @@ function SebaranAspek({ t }) {
           {teks('{n} aspek dinilai', { n: dinilai.length })}
           {terkunci ? ' · ' + teks('{n} belum dibuka', { n: terkunci }) : ''}
           {' · '}
-          {teks('ambang {n}', { n: CONFIG.AMBANG_SERTIFIKAT })}
+          {teks('rata-rata minimal {n}', { n: CONFIG.AMBANG_SERTIFIKAT })}
         </span>
         <span className="tabular-nums">100</span>
       </p>

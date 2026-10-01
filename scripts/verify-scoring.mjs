@@ -116,7 +116,7 @@ console.log('Jumlah mahasiswa   :', STUDENTS.length)
 console.log('Rata-rata nilai    :', r.rata)
 console.log('Sebaran huruf      :', JSON.stringify(r.huruf))
 console.log('Transkrip final    :', r.final)
-console.log('Di atas ambang ' + CONFIG.AMBANG_SERTIFIKAT + '  :', r.diAtasAmbang)
+console.log('Di atas rata-rata ' + CONFIG.AMBANG_SERTIFIKAT + '  :', r.diAtasAmbang)
 
 console.log('\nKelengkapan komponen per semester dan sumber:')
 console.log(pad('', 12) + kanan('PDP', 8) + kanan('MK', 8) + kanan('ENGAGE', 9))
