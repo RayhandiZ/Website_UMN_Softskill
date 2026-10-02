@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LABEL_PERAN, panelUntuk, roleFromEmail, useAuth } from '../lib/auth'
-import { IconAlert, IconLogo } from '../components/Icons'
+import { IconAlert, IconLogo, IconTabBaru } from '../components/Icons'
 import { useTeks } from '../lib/bahasa'
+import { SSO_LUPA_SANDI } from '../lib/layanan'
 import TombolBahasa from '../components/TombolBahasa'
 import { AREA } from '../lib/curriculum'
 
@@ -116,7 +117,7 @@ export default function Login() {
             {t('Masuk')}
           </h2>
           <p className="mt-2 text-[14px] text-ink-2">
-            {t('Gunakan akun kampus Anda. Peran ditentukan otomatis dari domain email.')}
+            {t('Masuk menggunakan akun SSO kampus.')}
           </p>
 
           <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
@@ -170,9 +171,17 @@ export default function Login() {
               </div>
               
               <div className="mt-2 flex justify-end">
-                <button type="button" className="text-[12.5px] font-semibold text-brand-ink hover:underline">
+                {/* Tab baru: formulir masuk ini tetap terbuka setelah sandi diatur ulang di SSO. */}
+                <a
+                  href={SSO_LUPA_SANDI}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-[44px] items-center gap-1 text-[12.5px] font-semibold text-brand-ink hover:underline sm:min-h-0"
+                >
                   {t('Lupa kata sandi?')}
-                </button>
+                  <IconTabBaru size={13} className="shrink-0" />
+                  <span className="sr-only">{' ' + t('(membuka SSO UMN di tab baru)')}</span>
+                </a>
               </div>
             </div>
               

@@ -53,8 +53,8 @@ export const EN = {
   'Tiga area pengembangan, sepuluh aspek CPMK, dinilai lewat PDP, mata kuliah humaniora, dan program kampus sepanjang Semester 1 sampai 3.':
     'Three development areas and ten CPMK aspects, graded through PDP, humanities courses, and campus programmes across Semesters 1 to 3.',
   'Masuk ke dashboard': 'Sign in to the dashboard',
-  'Gunakan akun kampus Anda. Peran ditentukan otomatis dari domain email.':
-    'Use your campus account. Your role is set automatically from the email domain.',
+  'Masuk menggunakan akun SSO kampus.':
+    'Sign in using your UMN SSO account.',
   'Terdeteksi sebagai': 'Detected as',
   'Kata sandi': 'Password',
   'Lupa kata sandi?': 'Forgot password?',
@@ -875,4 +875,7 @@ export const EN = {
   'Turun {d} dari Semester {n}': 'Down {d} from Semester {n}',
   'Sama dengan Semester {n}': 'Same as Semester {n}',
   '{a} dari {b} mahasiswa di atas rata-rata minimal {n}': '{a} of {b} students above the minimum average of {n}',
+
+  // Halaman masuk.
+  '(membuka SSO UMN di tab baru)': '(opens UMN SSO in a new tab)',
 }

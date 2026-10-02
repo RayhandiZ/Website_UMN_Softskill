@@ -131,6 +131,15 @@ export const IconChevronRight = (p) => (
   </Svg>
 )
 
+// Penanda tautan yang membuka situs lain di tab baru.
+export const IconTabBaru = (p) => (
+  <Svg {...p}>
+    <path d="M14 4h6v6" />
+    <path d="M20 4 11 13" />
+    <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+  </Svg>
+)
+
 export const IconArrowLeft = (p) => (
   <Svg {...p}>
     <path d="M19 12H5.5M11 5.5 4.5 12l6.5 6.5" />
