@@ -1,6 +1,6 @@
 import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { HurufBadge, ScoreBar, StatusTeks, Terkunci } from '../../components/Ui'
+import { PredikatTeks, ScoreBar, StatusTeks, Terkunci } from '../../components/Ui'
 import {
   IconCheck,
   IconChevronDown,
@@ -887,7 +887,7 @@ export default function Dashboard() {
               </p>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  {akhir.nilai != null ? <HurufBadge nilai={akhir.nilai} /> : null}
+                  {akhir.nilai != null ? <PredikatTeks nilai={akhir.nilai} /> : null}
                   <StatusTeks kuat={akhir.status === 'final'}>
                     {teks(akhir.status === 'final' ? 'Final' : 'Sementara')}
                   </StatusTeks>
