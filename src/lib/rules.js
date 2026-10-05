@@ -131,11 +131,11 @@ export function kelayakanSertifikat(student) {
       alasan:
         t.akhir.nilai == null
           ? 'Nilai akhir belum bisa dihitung'
-          : 'Nilai akhir ' + t.akhir.nilai + ', di bawah ambang ' + CONFIG.AMBANG_SERTIFIKAT,
+          : 'Nilai akhir ' + t.akhir.nilai + ', di bawah rata-rata minimal ' + CONFIG.AMBANG_SERTIFIKAT,
       ringkas:
         t.akhir.nilai == null
           ? 'nilai akhir belum bisa dihitung'
-          : 'nilai akhir ' + t.akhir.nilai + ' di bawah ambang ' + CONFIG.AMBANG_SERTIFIKAT,
+          : 'nilai akhir ' + t.akhir.nilai + ' di bawah rata-rata minimal ' + CONFIG.AMBANG_SERTIFIKAT,
     },
     {
       id: 'terkunci',

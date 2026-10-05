@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import FilterBar, { DEFAULT_FILTER } from '../../components/FilterBar'
-import { Card, CatatanKaki, EmptyState, HurufBadge, ScoreBar, StatTile, Tabs } from '../../components/Ui'
+import { Card, CatatanKaki, EmptyState, PredikatTeks, ScoreBar, StatTile, Tabs } from '../../components/Ui'
 import { IconBuilding, IconDownload, IconGauge, IconUsers } from '../../components/Icons'
 import { FACULTIES, byAngkatan, byProgram, filterStudents, ringkas } from '../../lib/mockData'
 import { susunCSV, unduhBerkas } from '../../lib/csv'
@@ -136,7 +136,7 @@ export default function Programs() {
                     <ScoreBar value={d.rata} color="var(--c1)" />
                   )}
                 </span>
-                <HurufBadge nilai={d.rata} />
+                <PredikatTeks nilai={d.rata} />
                 <span className="w-9 text-right text-[16px] font-extrabold tabular-nums text-ink">
                   {d.rata ?? '-'}
                 </span>

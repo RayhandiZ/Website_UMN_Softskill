@@ -55,7 +55,7 @@ export const EN = {
   'Masuk ke dashboard': 'Sign in to the dashboard',
   'Masuk menggunakan akun SSO kampus.':
     'Sign in using your UMN SSO account.',
-  'Terdeteksi sebagai': 'Detected as',
+  // 'Terdeteksi sebagai': 'Detected as',
   'Kata sandi': 'Password',
   'Lupa kata sandi?': 'Forgot password?',
   Sembunyikan: 'Hide',
@@ -245,6 +245,7 @@ export const EN = {
   Nilai: 'Score',
   Penilaian: 'Scores',
   Huruf: 'Grade',
+  Predikat: 'Grade',
   'skema belum final': 'scheme not final',
   'Skema belum final': 'Draft scheme',
   Draft: 'Draft',
@@ -371,7 +372,7 @@ export const EN = {
   'Data mahasiswa': 'Student data',
   'Input & Import Nilai': 'Enter & Import Scores',
   'Persetujuan Nilai Dosen': 'Lecturer Score Approval',
-  'Pengumpulan Masuk': 'Incoming Submissions',
+  'Data Masuk': 'Incoming Submissions',
   'Input Nilai': 'Enter Scores',
   'Status Usulan': 'Proposal Status',
   Pengumpulan: 'Submissions',
@@ -715,9 +716,7 @@ export const EN = {
     'This account is not registered as a course lecturer',
   'Hubungi Biro Kemahasiswaan untuk didaftarkan pada satu kelas.':
     'Contact the Student Affairs Bureau to be assigned to a class.',
-  'Pengumpulan masuk': 'Incoming submissions',
-  'Berkas yang dikirim mahasiswa {prodi} untuk {unit} Semester {semester}.':
-    'Files sent by {prodi} students for {unit} Semester {semester}.',
+  'Data masuk': 'Incoming data',
   'Nilai tidak pernah datang dari mahasiswa. Yang mereka kirim hanya pekerjaannya.':
     'Scores never come from students. All they send is their work.',
   'Menunggu dinilai': 'Awaiting grading',
@@ -826,15 +825,12 @@ export const EN = {
     'An audit table of every score change (time, actor, aspect, component, old score, new score, and source) with filters for actor, action type, and date range.',
 
   /* -------------------------- halaman masuk ------------------------------ */
-  'Apa sih UMN Softskill itu?': 'What exactly is UMN Softskill?',
-  'UMN Softskill merupakan sistem penilaian softskill yang dirancang untuk mengevaluasi dan mengembangkan kemampuan interpersonal, keterampilan teknis, dan kompetensi lainnya pada mahasiswa Universitas Multimedia Nusantara. Diantaranya ada tiga penilaian seperti dibawah ini:':
-    'UMN Softskill is an assessment system built to evaluate and develop the interpersonal skills, technical skills, and other competencies of Universitas Multimedia Nusantara students. It rests on the three assessment areas below:',
+  'Apa sih HUMAN Softskill itu?': 'What exactly is HUMAN Softskill?',
+  'HUMAN Softskill merupakan sistem penilaian softskill yang dirancang untuk mengevaluasi dan mengembangkan kemampuan interpersonal, keterampilan teknis, dan kompetensi lainnya pada mahasiswa Universitas Multimedia Nusantara. Diantaranya ada tiga penilaian seperti dibawah ini:':
+    'HUMAN Softskill is an assessment system built to evaluate and develop the interpersonal skills, technical skills, and other competencies of Universitas Multimedia Nusantara students. It rests on the three assessment areas below:',
 
-  /* ----------------------------------------------------------------------
-     BELUM DITERJEMAHKAN — ditulis otomatis oleh `npm run bahasa:sync`.
-     Isi sisi kanannya, lalu pindahkan barisnya ke bagian yang sesuai di
-     atas. Selama masih kosong, kalimatnya tampil dalam bahasa Indonesia.
-     ---------------------------------------------------------------------- */
+  // Lembar cetak transkrip. 'No' dioper sebagai daftar kepala tabel, tak terlihat pemindai.
+  No: 'No.',
   'Garis putus-putus: ambang {n}': 'Dashed line: threshold {n}',
   'Grafik nilai per semester, Semester {a} sebesar {na} sampai Semester {b} sebesar {nb}. {ringkas}':
     'Score by semester chart, Semester {a} at {na} through Semester {b} at {nb}. {ringkas}',
@@ -878,4 +874,29 @@ export const EN = {
 
   // Halaman masuk.
   '(membuka SSO UMN di tab baru)': '(opens UMN SSO in a new tab)',
+
+  // Lembar cetak transkrip. 'No' dioper sebagai daftar kepala tabel, tak terlihat pemindai.
+  No: 'No.',
+  'Aspek belum dinilai': 'Aspects not yet scored',
+  'belum dinilai atau belum dibuka': 'not yet scored or not yet open',
+  'Head of Department': 'Head of Department',
+  'di bawah {n}': 'below {n}',
+  'NIM': 'Student ID',
+  'Program Pembinaan Softskill 5C, Semester 1 sampai {total}': '5C Softskill Development Programme, Semester 1 to {total}',
+  'Transkrip Sementara': 'Provisional Transcript',
+  'Transkrip Softskill': 'Softskill Transcript',
+
+  // Halaman sertifikat.
+  '{n} dari {total} syarat belum terpenuhi.': '{n} of {total} requirements not yet met.',
+  'atas keberhasilannya menyelesaikan seluruh {n} aspek CPMK, Semester 1 sampai {total}, dengan nilai akhir {nilai} dan predikat {huruf} ({label}).': 'for successfully completing all {n} CPMK aspects, Semester 1 to {total}, with a final score of {nilai} and grade {huruf} ({label}).',
+  'Belum terpenuhi': 'Not yet met',
+  'Cetak sertifikat': 'Print certificate',
+  'diberikan kepada': 'awarded to',
+  'Nilai akhir {nilai}, predikat {huruf}.': 'Final score {nilai}, grade {huruf}.',
+  'Nomor': 'Number',
+  'Program Pembinaan Softskill 5C': '5C Softskill Development Programme',
+  'Semua syarat terpenuhi. Sertifikat siap dicetak.': 'All requirements met. The certificate is ready to print.',
+  'Sertifikat Pembinaan Softskill 5C': '5C Softskill Development Certificate',
+  'Syarat kelayakan': 'Eligibility requirements',
+  'Tombol cetak aktif setelah seluruh syarat di bawah terpenuhi, tanpa terlewat satu pun.': 'The print button turns on once every requirement below is met, with none missing.',
 }

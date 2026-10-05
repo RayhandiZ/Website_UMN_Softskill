@@ -12,8 +12,8 @@ w.ResizeObserver = global.ResizeObserver
 
 const SESI = { student: JSON.stringify({ role:'student', email:'a@student.umn.ac.id', name:'X', initials:'RZ' }),
                admin:   JSON.stringify({ role:'admin',   email:'a@umn.ac.id', name:'Y', initials:'KH' }),
-               dosen:   JSON.stringify({ role:'dosen',   email:'suryasari@lecturer.umn.ac.id', name:'Suryasari, S.Kom., M.MSI.',
-                                         initials:'SU', nip:'0312078801', sumber:'MK', semester:1, prodi:'Sistem Informasi' }) }
+               dosen:   JSON.stringify({ role:'dosen',   email:'simon.petrus@lecturer.umn.ac.id', name:'Simon Petrus Wenehenubun, S.S., M.M.',
+                                         initials:'SP', nip:'0312078801', sumber:'MK', semester:1, prodi:'Sistem Informasi' }) }
 
 const ISI = {
   '/mahasiswa': [
@@ -104,7 +104,7 @@ const ISI = {
   ],
 
   '/dosen': [
-    [/Pengumpulan masuk/, 'judul halaman pengumpulan'],
+    [/Data masuk/, 'judul halaman pengumpulan'],
     [/Menunggu dinilai/, 'angka utama: yang belum dinilai'],
     [/Nilai tidak pernah datang dari mahasiswa/, 'R8 dinyatakan di halaman dosen'],
     [/MK Humaniora Semester 1, Sistem Informasi/, 'kelas yang dipegang disebut di kerangka'],
@@ -154,7 +154,7 @@ const RUTE = [
   ['admin', '/admin/nilai', 'Input nilai'],
   ['admin', '/admin/profil', 'Profil admin'],
   ['admin', '/admin/usulan', 'Persetujuan nilai dosen'],
-  ['dosen', '/dosen', 'Pengumpulan masuk'],
+  ['dosen', '/dosen', 'Data masuk'],
   ['dosen', '/dosen/nilai', 'Input nilai dosen'],
   ['dosen', '/dosen/usulan', 'Status usulan dosen'],
   ['dosen', '/dosen/profil', 'Profil dosen'],
@@ -163,7 +163,7 @@ const RUTE = [
 ;(async () => {
   const bundle = require('./bundle.cjs')
   const mod = require(bundle('smoke.jsx', '.smoke.cjs', { platform: 'browser', format: 'cjs', loader: { '.jsx': 'jsx' }, jsx: 'automatic' }))
-  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, ujiAlurDosen, ujiBahasa, ujiSeretBahasa, ujiLayanan, ujiPanelLain, ujiKamus, ujiOtomatis, ujiStatusPolos, ujiCetakTranskrip, ujiTandaDraft, ujiTrenSemester, ujiKurva, ujiPerkembangan, ujiPenandaMenu, perAngkatan, BATAS_BARIS_ASPEK } = mod
+  const { render, daftarUji, ujiMenuHp, ujiAspek, ujiRingkasHp, ujiPeta, ujiRiwayat, ujiLoncengAdmin, ujiSasaranInput, ujiKeputusanKoreksi, ujiSasaranDanTanda, ujiPenyuntingFoto, ujiSegarkanData, ujiLaciAdmin, ujiStatusData, ujiLipatOverview, ujiAlurDosen, ujiBahasa, ujiSeretBahasa, ujiLayanan, ujiPanelLain, ujiKamus, ujiOtomatis, ujiStatusPolos, ujiCetakTranskrip, ujiTandaDraft, ujiTrenSemester, ujiKurva, ujiPerkembangan, ujiPenandaMenu, ujiSertifikat, perAngkatan, BATAS_BARIS_ASPEK } = mod
   let gagal = 0
   for (const [peran, rute, nama] of RUTE) {
     w.localStorage.setItem('sk5c.session', SESI[peran])
@@ -663,14 +663,18 @@ const RUTE = [
     ['transkrip: tanpa warna status', st.tanpaWarna],
     ['transkrip: tanpa ikon, hanya teks', st.tanpaIkon],
     ['transkrip: dua grafik tetap ada di layar', ct.grafikAda],
-    ['transkrip: grafik TIDAK ikut tercetak', ct.grafikTakTercetak],
-    ['transkrip: tabel nilai tetap tercetak', ct.tabelTercetak],
-    ['transkrip: kop dokumen tetap tercetak', ct.kopTercetak],
-    ['transkrip: kartu ajukan koreksi tidak tercetak', ct.ajukanTakTercetak],
-    ['cetak: ada tabel yang diperiksa', ct.adaTabel],
-    ['cetak: lebar minimum dilepas, tidak terpotong', ct.lebarDilepas],
-    ['cetak: wadah bergulir dibuat terlihat', ct.gulirDilepas],
-    ['cetak: lebar kolom tabel dikunci', ct.tabelTerkunci],
+    ['cetak: lembar resmi hanya muncul di kertas', ct.lembarHanyaDiKertas],
+    ['cetak: tampilan layar tidak ikut tercetak', ct.layarTakTercetak],
+    ['cetak: kartu ajukan koreksi tidak tercetak', ct.ajukanTakTercetak],
+    ['cetak: judul Transkrip Sementara', ct.judul],
+    ['cetak: kolom No, Kode, Aspek, Semester, Nilai, Predikat', ct.kepala === 'No|Kode|Aspek CPMK|Semester|Nilai|Predikat'],
+    ['cetak: sepuluh aspek tercantum', ct.jumlahBaris === 10],
+    ['cetak: aspek belum dibuka tertulis ..., bukan 0 (R2)', ct.belumBukanNol],
+    ['cetak: ringkasan 7/10 aspek, nilai 79 sementara, predikat C', ct.ringkasan],
+    ['cetak: keterangan predikat A sampai D', ct.keterangan],
+    ['cetak: tempat, tanggal, dan tanda tangan', ct.tandaTangan],
+    ['cetak: alamat kampus di kaki halaman', ct.alamat],
+    ['cetak: tanpa grafik di kertas, hanya logo', ct.tanpaGrafik],
   ]
   const dp = await ujiTandaDraft('/mahasiswa/peta')
   const dt = await ujiTandaDraft('/mahasiswa/transkrip')
@@ -794,6 +798,23 @@ const RUTE = [
   console.log('')
   console.log((rusakPk.length ? 'GAGAL  ' : 'OK     ') + 'Perkembangan per semester (Overview admin)')
   for (const [ket, ok] of cekPk) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
+
+  const srBelum = await ujiSertifikat(null)
+  const srLayak = await ujiSertifikat('DEMO-LAYAK')
+  const srKosong = await ujiSertifikat('DEMO-KOSONG')
+  const cekSr = [
+    ['belum layak: tombol cetak ada tapi mati', srBelum.adaTombol && srBelum.mati],
+    ['belum layak: klik tidak mencetak apa pun', srBelum.dicetak === 0],
+    ['belum layak: tidak ada lembar sertifikat sama sekali', !srBelum.adaLembar],
+    ['kelima syarat tercantum beserta statusnya', srBelum.jumlahSyarat === 5 && srBelum.belum === 4],
+    ['satu komponen kosong saja sudah mematikan tombol', srKosong.mati && !srKosong.adaLembar],
+    ['layak: tombol hidup dan klik mencetak', !srLayak.mati && srLayak.dicetak === 1],
+    ['layak: lembar sertifikat memuat nama dan nilai', /Kirana Wulandari/.test(srLayak.isiLembar) && /nilai akhir [0-9]+ dan predikat [A-D]/.test(srLayak.isiLembar)],
+  ]
+  const rusakSr = cekSr.filter(([, ok]) => !ok)
+  gagal += rusakSr.length
+  console.log((rusakSr.length ? 'GAGAL  ' : 'OK     ') + 'Tombol cetak sertifikat')
+  for (const [ket, ok] of cekSr) console.log('       ' + (ok ? 'v ' : 'x ') + ket)
 
   const pm = await ujiPenandaMenu()
   const cekPm = [

@@ -1272,42 +1272,62 @@ export async function ujiTandaDraft(rute) {
   return hasil
 }
 
+// Tombol cetak sertifikat: mati selama ada satu syarat pun yang belum terpenuhi.
+export async function ujiSertifikat(studentId) {
+  const lama = window.localStorage.getItem('sk5c.session')
+  if (studentId) {
+    window.localStorage.setItem('sk5c.session', JSON.stringify({ role: 'student', email: 'x@student.umn.ac.id', name: 'X', initials: 'X', studentId }))
+  }
+  const { el, lepas } = await pasang('/mahasiswa/sertifikat')
+  const tombol = [...el.querySelectorAll('button')].find((b) => /Cetak sertifikat/.test(b.textContent))
+  let dicetak = 0
+  const cetakAsli = window.print
+  window.print = () => { dicetak++ }
+  if (tombol) await klik(tombol, 1)
+  window.print = cetakAsli
+  const lembar = el.querySelector('.lembar-sertifikat')
+  const hasil = {
+    adaTombol: Boolean(tombol),
+    mati: Boolean(tombol?.disabled),
+    dicetak,
+    // Disaring ke bagian syarat; menu sidebar juga daftar ul > li.
+    jumlahSyarat: [...el.querySelectorAll('section')].find((n) => /Syarat kelayakan/.test(n.textContent))?.querySelectorAll('li').length ?? 0,
+    belum: (el.textContent.match(/Belum terpenuhi/g) ?? []).length,
+    adaLembar: Boolean(lembar),
+    isiLembar: lembar?.textContent ?? '',
+  }
+  lepas()
+  if (lama) window.localStorage.setItem('sk5c.session', lama)
+  return hasil
+}
+
 export async function ujiCetakTranskrip() {
   const { el, lepas } = await pasang('/mahasiswa/transkrip')
 
-  const bingkai = bagianGrafik(el)
-  const wadahGrafik = bingkai[0]?.parentElement
-
-  /* ------------------------------------------------------------------------
-     Tidak ada yang boleh terpotong di kertas.
-
-     A4 potret bermargin 14mm hanya menyisakan sekitar 688 px. Tabel di layar
-     dirancang selebar 820 px dan digulir mendatar; di kertas tidak ada yang
-     bisa digulir, jadi kolom terakhir hilang tanpa sisa. Uji ini memastikan
-     setiap lebar minimum dan setiap wadah bergulir punya pasangan print:-nya.
-     ------------------------------------------------------------------------ */
-  const lebarPaksa = [...el.querySelectorAll('[class*="min-w-["]')]
-  const wadahGulir = [...el.querySelectorAll('.overflow-x-auto')]
+  const lembar = el.querySelector('.lembar-cetak')
+  const layar = lembar?.nextElementSibling
+  const kepala = lembar ? [...lembar.querySelectorAll('thead th')].map((n) => n.textContent).join('|') : ''
+  const baris = lembar ? [...lembar.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent)) : []
+  const teks = lembar?.textContent ?? ''
 
   const hasil = {
-    grafikAda: bingkai.length === 2,
-    /* Tiap lebar minimum harus dilepas saat mencetak. */
-    lebarDilepas: lebarPaksa.every((n) => n.className.includes('print:min-w-0')),
-    /* Tiap wadah bergulir harus dibuat terlihat saat mencetak. */
-    gulirDilepas: wadahGulir.every((n) => n.className.includes('print:overflow-visible')),
-    /* Tabel dikunci lebarnya supaya tidak ada kolom yang memuai keluar. */
-    tabelTerkunci: [...el.querySelectorAll('table')].every((n) =>
-      n.className.includes('print:table-fixed'),
-    ),
-    adaTabel: el.querySelectorAll('table').length > 0,
-    grafikTakTercetak: Boolean(wadahGrafik && wadahGrafik.className.includes('print:hidden')),
-    /* Yang WAJIB tetap tercetak. */
-    tabelTercetak: /Rincian capaian per semester/.test(el.textContent),
-    kopTercetak: /Transkrip Capaian Softskill/.test(el.textContent),
+    grafikAda: bagianGrafik(el).length === 2,
+    // Di layar lembar tersembunyi; di kertas hanya lembar ini yang muncul.
+    lembarHanyaDiKertas: Boolean(lembar && /(^| )hidden( |$)/.test(lembar.className) && lembar.className.includes('print:block')),
+    layarTakTercetak: Boolean(layar && layar.className.includes('print:hidden')),
+    judul: /Transkrip Sementara/.test(teks),
+    kepala,
+    jumlahBaris: baris.length,
+    // Aspek yang belum dibuka tertulis "...", tidak pernah 0 (R2).
+    belumBukanNol: baris.filter((r) => r[4] === '...' && r[5] === '...').length === 3 && baris.every((r) => r[4] !== '0'),
+    ringkasan: /Aspek dinilai:7 \/ 10/.test(teks) && /Nilai akhir:79 \(sementara\)/.test(teks) && /Predikat:C/.test(teks),
+    keterangan: ['A', 'B', 'C', 'D'].every((h) => teks.includes('Predikat ' + h + ':')) && /Belum Memenuhi:di bawah 60/.test(teks),
+    tandaTangan: /Head of Department/.test(teks) && /Tangerang, /.test(teks),
+    alamat: /Jl\. Boulevard Gading Serpong/.test(teks),
+    // Hanya logo; tidak ada grafik di kertas.
+    tanpaGrafik: lembar ? lembar.querySelectorAll('svg').length === 1 : false,
     ajukanTakTercetak: [...el.querySelectorAll('section')].some(
-      (n) =>
-        /Ada nilai yang menurutmu keliru/.test(n.textContent) &&
-        n.className.includes('print:hidden'),
+      (n) => /Ada nilai yang menurutmu keliru/.test(n.textContent) && n.closest('.print\\:hidden'),
     ),
   }
 

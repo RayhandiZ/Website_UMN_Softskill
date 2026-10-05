@@ -76,7 +76,7 @@ export default function Laci({ buka, onTutup, label = 'Menu navigasi', nada = 't
           <span className="flex items-center gap-2.5">
             <IconLogo size={32} />
             <span className="text-[14px] font-extrabold tracking-tight">
-              UMN <span className="text-[var(--accent)]">SOFTSKILL</span>
+              HUMAN <span className="text-[var(--accent)]">SOFTSKILL</span>
             </span>
           </span>
           <button

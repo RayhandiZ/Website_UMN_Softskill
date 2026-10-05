@@ -5,7 +5,7 @@ import {
   CardHeader,
   CatatanKaki,
   EmptyState,
-  HurufBadge,
+  PredikatTeks,
   StatusTeks,
   TandaDraft,
   Terkunci,
@@ -15,7 +15,6 @@ import AspectBars from '../../components/charts/AspectBars'
 import {
   IconChevronDown,
   IconDownload,
-  IconInfo,
   IconLock,
   IconPencil,
   IconPrint,
@@ -26,6 +25,7 @@ import { labelNilaiAkhir, statusDokumenTranskrip } from '../../lib/rules'
 import { PERIODE_AKTIF, labelPeriode, transkripOf } from '../../lib/mockData'
 import { ajukanKoreksi, koreksiMilik, useStore } from '../../lib/store'
 import { useTeks } from '../../lib/bahasa'
+import LembarCetak from './LembarCetak'
 
 /* Tanpa `tone`: status di transkrip pun kata biasa, bukan pil berwarna.
    Lihat StatusTeks di components/Ui.jsx untuk alasannya. */
@@ -53,7 +53,10 @@ export default function Transkrip({ student }) {
   const clusterRows = Object.values(t.cluster)
 
   return (
-    <div className="space-y-6">
+    <>
+      {/* Di kertas hanya lembar resmi yang tercetak; seluruh tampilan layar disembunyikan. */}
+      <LembarCetak student={student} transkrip={t} />
+    <div className="space-y-6 print:hidden">
       {/* ------------------------------ kop dokumen ------------------------------ */}
       <Card className="overflow-hidden print:border-0 print:shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line px-6 py-5">
@@ -71,11 +74,11 @@ export default function Transkrip({ student }) {
             </p>
           </div>
           {dokumen.watermark ? (
-            <Badge tone="warning" icon={IconInfo}>
+            <StatusTeks kuat className="tracking-[.06em]">
               {dokumen.watermark}
-            </Badge>
+            </StatusTeks>
           ) : (
-            <Badge tone="good">{teks('Dokumen final')}</Badge>
+            <StatusTeks kuat>{teks('Dokumen final')}</StatusTeks>
           )}
         </div>
 
@@ -113,7 +116,7 @@ export default function Transkrip({ student }) {
           </div>
           <div className="min-w-[220px] flex-1 print:min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <HurufBadge nilai={t.akhir.nilai} panjang />
+              <PredikatTeks nilai={t.akhir.nilai} panjang />
               <StatusTeks kuat={t.akhir.status === 'final'}>{teks(label.teks)}</StatusTeks>
             </div>
             <p className="mt-2.5 max-w-xl text-[13.5px] leading-relaxed text-ink-2">
@@ -130,10 +133,7 @@ export default function Transkrip({ student }) {
       </Card>
 
       {/* ------------------------------ tabel utama ------------------------------ */}
-      {/* cetak-transkrip: penanda untuk aturan @media print di index.css.
-          Disasar lewat kelas, bukan lewat elemen, supaya tabel lain di
-          aplikasi tidak ikut terpengaruh. */}
-      <Card className="cetak-transkrip overflow-hidden">
+      <Card className="overflow-hidden">
         <CardHeader
           title={teks('Rincian capaian per semester')}
           subtitle={teks('Klik baris aspek untuk melihat komponen asesmen yang membentuk nilainya')}
@@ -149,7 +149,7 @@ export default function Transkrip({ student }) {
           <table className="w-full min-w-[820px] border-collapse print:min-w-0 print:table-fixed">
             <thead>
               <tr className="border-b border-line bg-surface-2">
-                {['Kode', 'Aspek CPMK', 'Cluster', 'Sumber penilaian', 'Nilai', 'Huruf', 'Status'].map((h, i) => (
+                {['Kode', 'Aspek CPMK', 'Cluster', 'Sumber penilaian', 'Nilai', 'Predikat', 'Status'].map((h, i) => (
                   <th
                     key={h}
                     className={
@@ -242,7 +242,7 @@ export default function Transkrip({ student }) {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          {a.terkunci ? null : <HurufBadge nilai={a.nilai} />}
+                          {a.terkunci ? null : <PredikatTeks nilai={a.nilai} />}
                         </td>
                         <td className="px-4 py-3 text-right">
                           {a.terkunci ? (
@@ -346,6 +346,7 @@ export default function Transkrip({ student }) {
         {dokumen.catatan ? <CatatanKaki>{teks(dokumen.catatan)}</CatatanKaki> : null}
       </Card>
     </div>
+    </>
   )
 }
 

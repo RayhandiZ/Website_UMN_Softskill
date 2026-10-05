@@ -2,13 +2,10 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Badge, Card, CardHeader, CatatanKaki, EmptyState } from '../../components/Ui'
+import { Card, CardHeader, CatatanKaki, EmptyState, StatusTeks } from '../../components/Ui'
 import {
-  IconAlert,
-  IconCheck,
   IconCheckShield,
   IconChevronDown,
-  IconClock,
   IconPencil,
 } from '../../components/Icons'
 import { SUMBER } from '../../lib/curriculum'
@@ -27,9 +24,10 @@ import { useTeks } from '../../lib/bahasa'
    -------------------------------------------------------------------------- */
 
 const RUPA = {
-  menunggu: { label: 'Menunggu keputusan', tone: 'warning', icon: IconClock },
-  disetujui: { label: 'Disetujui', tone: 'good', icon: IconCheck },
-  ditolak: { label: 'Ditolak', tone: 'critical', icon: IconAlert },
+  menunggu: { label: 'Menunggu keputusan' },
+  disetujui: { label: 'Disetujui' },
+  // Ditebalkan karena menunggu tindakan dosen: diusulkan ulang.
+  ditolak: { label: 'Ditolak', perluTindakan: true },
 }
 
 export default function UsulanDosen() {
@@ -130,9 +128,7 @@ export default function UsulanDosen() {
                       · {t(u.cara === 'manual' ? 'input manual' : 'unggah berkas')}
                     </span>
                     <span className="text-[12.5px] tabular-nums text-ink-3">{u.waktu}</span>
-                    <Badge tone={r.tone} icon={r.icon}>
-                      {t(r.label)}
-                    </Badge>
+                    <StatusTeks kuat={Boolean(r.perluTindakan)}>{t(r.label)}</StatusTeks>
                     <IconChevronDown
                       size={17}
                       className={

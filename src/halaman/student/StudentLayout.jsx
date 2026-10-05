@@ -177,7 +177,7 @@ export default function StudentLayout({ children }) {
           <Link href="/mahasiswa" className="mb-7 flex items-center gap-2.5 px-2.5">
             <IconLogo size={36} />
             <span className="text-[15px] font-extrabold tracking-tight text-ink">
-              UMN <span className="text-[var(--accent)]">SOFTSKILL</span>
+              HUMAN <span className="text-[var(--accent)]">SOFTSKILL</span>
             </span>
           </Link>
 
@@ -208,7 +208,7 @@ export default function StudentLayout({ children }) {
             <Link href="/mahasiswa" className="flex items-center gap-2 lg:hidden">
               <IconLogo size={32} />
               <span className="hidden text-[14px] font-extrabold tracking-tight text-ink sm:block">
-                UMN <span className="text-[var(--accent)]">SOFTSKILL</span>
+                HUMAN <span className="text-[var(--accent)]">SOFTSKILL</span>
               </span>
             </Link>
 

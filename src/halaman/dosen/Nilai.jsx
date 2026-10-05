@@ -11,11 +11,11 @@ import {
   EmptyState,
   SearchInput,
   Select,
+  StatusTeks,
   Tabs,
 } from '../../components/Ui'
 import {
   IconAlert,
-  IconCheck,
   IconCheckShield,
   IconDownload,
   IconPencil,
@@ -237,9 +237,9 @@ export default function NilaiDosen() {
 function HasilUsulan({ usulan, onTutup }) {
   const t = useTeks()
   return (
-    <Card className="border-[color-mix(in_srgb,var(--good)_45%,var(--line))] px-5 py-4 sm:px-6">
+    <Card className="px-5 py-4 sm:px-6">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[color-mix(in_srgb,var(--good)_14%,transparent)] text-[var(--good)]">
+        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-2">
           <IconCheckShield size={19} />
         </span>
         <div className="min-w-0 flex-1">
@@ -341,7 +341,7 @@ function IsiManual({ galat, baris, bisa, cari, setCari, onKirim }) {
                   <td className="whitespace-nowrap px-4 py-3 align-middle text-[13px] tabular-nums text-ink-2">
                     {b.waktu}
                     {b.terlambat ? (
-                      <span className="mt-0.5 block text-[12px] font-bold text-[var(--warning-ink)]">
+                      <span className="mt-0.5 block text-[12px] font-semibold text-ink-2">
                         {t('terlambat')}
                       </span>
                     ) : null}
@@ -601,13 +601,10 @@ function IsiOtomatis({ galatKirim, komponen, baris, bisa, onKirim }) {
                     </td>
                     <td className="px-4 py-2.5">
                       {p.masalah ? (
-                        <Badge tone="critical" icon={IconAlert}>
-                          {p.masalah}
-                        </Badge>
+                        // Masalah tetap merah: ini galat yang menahan baris, sama seperti (Draft) di panel mahasiswa.
+                        <span className="text-[12.5px] font-bold text-[var(--critical)]">{p.masalah}</span>
                       ) : (
-                        <Badge tone="good" icon={IconCheck}>
-                          {t('siap diusulkan')}
-                        </Badge>
+                        <StatusTeks>{t('siap diusulkan')}</StatusTeks>
                       )}
                     </td>
                   </tr>

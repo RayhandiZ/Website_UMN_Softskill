@@ -89,7 +89,7 @@ export default function Footer({ pintasan = [] }) {
           <div className="flex items-center gap-2.5">
             <IconLogo size={40} />
             <span className="text-[16px] font-extrabold tracking-tight">
-              UMN <span className="text-[var(--accent)]">SOFTSKILL</span>
+              HUMAN <span className="text-[var(--accent)]">SOFTSKILL</span>
             </span>
           </div>
           <p className="mt-3 max-w-[220px] text-[13px] leading-relaxed text-white/70">

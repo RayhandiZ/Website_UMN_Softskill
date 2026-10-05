@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import FilterBar, { DEFAULT_FILTER } from '../../components/FilterBar'
-import { Badge, Card, CatatanKaki, EmptyState, HurufBadge, ScoreBar, Select } from '../../components/Ui'
+import { Badge, Card, CatatanKaki, EmptyState, PredikatTeks, ScoreBar, Select } from '../../components/Ui'
 import { IconChevronDown, IconChevronRight, IconDownload, IconRefresh } from '../../components/Icons'
 import { CONFIG } from '../../lib/config'
 import { useTeks } from '../../lib/bahasa'
@@ -20,7 +20,7 @@ const KOLOM = [
   { key: 'angkatanLabel', label: 'Angkatan', align: 'left' },
   { key: 'semesterAktif', label: 'Sem', align: 'right' },
   { key: 'nilai', label: 'Nilai', align: 'right' },
-  { key: 'huruf', label: 'Huruf', align: 'right' },
+  { key: 'huruf', label: 'Predikat', align: 'right' },
   { key: 'dinilai', label: 'Aspek dinilai', align: 'right' },
   { key: 'sertifikat', label: 'Sertifikat', align: 'left' },
 ]
@@ -85,7 +85,7 @@ export default function Students() {
     unduhBerkas(
       'data-mahasiswa-' + new Date().toISOString().slice(0, 10) + '.csv',
       susunCSV(
-        ['NIM', 'Nama', 'Email', 'Program studi', 'Angkatan', 'Semester', 'Nilai', 'Huruf', 'Aspek dinilai', 'Sertifikat'],
+        ['NIM', 'Nama', 'Email', 'Program studi', 'Angkatan', 'Semester', 'Nilai', 'Predikat', 'Aspek dinilai', 'Sertifikat'],
         urut.map((x) => [
           x.s.nim, x.s.name, x.s.email, x.s.program, x.s.angkatanLabel,
           x.s.semesterAktif, x.nilai ?? '', hurufMutu(x.nilai)?.huruf ?? '',
@@ -203,7 +203,7 @@ export default function Students() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <HurufBadge nilai={x.nilai} />
+                    <PredikatTeks nilai={x.nilai} />
                   </td>
                   <td className="px-4 py-3 text-right text-[13px] tabular-nums text-ink-2">
                     {x.dinilai}/{x.total}

@@ -136,7 +136,7 @@ export function programStudi(faculty = 'Semua') {
 const PENILAI = {
   PDP: ['Tim PDP: Yohanes Adi, M.Psi.', 'Tim PDP: Ratna Widyastuti, M.Pd.', 'Tim PDP: Bagas Aryo, M.Psi.'],
   MK: [
-    'Suryasari, S.Kom., M.MSI.',
+    'Simon Petrus Wenehenubun, S.S., M.M.',
     'Adhi Kusnadi, S.T., M.Si.',
     'Fransisca Puspitasari, M.Hum.',
     'Yustinus Prasetya, M.Th.',
@@ -427,7 +427,7 @@ export function personaAktif(search = typeof window !== 'undefined' ? window.loc
 
 export const ME = PERSONA[1]
 
-export const PEMBIMBING = 'Suryasari, S.Kom., M.MSI.'
+export const PEMBIMBING = 'Simon Petrus Wenehenubun, S.S., M.M.'
 
 /* ------------------------------- transkrip ------------------------------- */
 
@@ -458,7 +458,7 @@ export const nilaiAkhirOf = (student) => transkripOf(student).akhir
 
 const AKTOR = [
   'Andini Prameswari (Kemahasiswaan)',
-  'Suryasari, S.Kom., M.MSI.',
+  'Simon Petrus Wenehenubun, S.S., M.M.',
   'Tim PDP',
   'Rizky Maulana (Student Service)',
 ]
@@ -737,7 +737,7 @@ export function perluDitinjau(rows = STUDENTS) {
    sendiri lewat panelnya.
    ========================================================================== */
 
-/** Inisial dari nama tanpa gelar — "Suryasari, S.Kom., M.MSI." → "SU". */
+/** Inisial dari nama tanpa gelar — "Simon Petrus Wenehenubun, S.S., M.M." → "SP". */
 function inisialDosen(nama) {
   const bersih = nama.split(',')[0].trim().split(/\s+/)
   return bersih.length > 1
@@ -753,12 +753,13 @@ const emailDosen = (nama) =>
     .map(slug)
     .join('.') + '@lecturer.umn.ac.id'
 
-const d = ({ nip, nama, jabatan, sumber, semester, prodi }) => ({
+const d = ({ nip, nama, email, jabatan, sumber, semester, prodi }) => ({
   id: 'DSN-' + nip.slice(-4),
   nip,
   nama,
   inisial: inisialDosen(nama),
-  email: emailDosen(nama),
+  // Email boleh ditulis langsung bila tidak mengikuti pola nama lengkap.
+  email: email ?? emailDosen(nama),
   jabatan,
   sumber,
   semester,
@@ -769,7 +770,8 @@ const d = ({ nip, nama, jabatan, sumber, semester, prodi }) => ({
 export const DOSEN = [
   d({
     nip: '0312078801',
-    nama: 'Suryasari, S.Kom., M.MSI.',
+    nama: 'Simon Petrus Wenehenubun, S.S., M.M.',
+    email: 'simon.petrus@lecturer.umn.ac.id',
     jabatan: 'Dosen MK Humaniora',
     sumber: 'MK',
     semester: 1,

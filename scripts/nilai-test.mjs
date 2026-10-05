@@ -351,7 +351,7 @@ const bF = await simpanBatch({
   sumber: kosongF[0].sumber,
   semester: aspekF.aspek.semester,
   angkatanId: mhsF.angkatanId,
-  aktor: 'Suryasari, S.Kom., M.MSI.',
+  aktor: 'Simon Petrus Wenehenubun, S.S., M.M.',
   cara: 'manual',
   entri: kosongF.map((k, i) => ({ nim: mhsF.nim, komponenId: k.id, nilai: 80 + i })),
 })

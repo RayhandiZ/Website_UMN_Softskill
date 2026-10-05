@@ -38,7 +38,7 @@ const KELOMPOK_LACI = (perluDinilai, menunggu) => [
   {
     judul: 'Kelas saya',
     item: [
-      { to: '/dosen', label: 'Pengumpulan Masuk', icon: IconInbox, end: true, lencana: perluDinilai || null },
+      { to: '/dosen', label: 'Data Masuk', icon: IconInbox, end: true, lencana: perluDinilai || null },
       { to: '/dosen/nilai', label: 'Input & Import Nilai', icon: IconUpload },
       { to: '/dosen/usulan', label: 'Status Usulan', icon: IconCheckShield, lencana: menunggu || null },
     ],

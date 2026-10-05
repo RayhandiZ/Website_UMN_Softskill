@@ -59,7 +59,7 @@ export default function Navbar({ links = [], kelompok = null, aksi = null, foto 
         <Link href="/" className="flex items-center gap-2.5 text-white">
           <IconLogo size={40} />
           <span className="hidden text-[15px] font-extrabold tracking-tight sm:block">
-            UMN <span className="text-[var(--accent)]">SOFTSKILL</span>
+            HUMAN <span className="text-[var(--accent)]">SOFTSKILL</span>
           </span>
         </Link>
 

@@ -84,6 +84,19 @@ export function HurufBadge({ nilai, sementara = false, panjang = false }) {
   )
 }
 
+// Predikat sebagai teks biasa, tanpa lencana berwarna. panjang: ikut menyebut nama predikatnya.
+export function PredikatTeks({ nilai, panjang = false }) {
+  const t = useTeks()
+  if (nilai == null) return <span className="text-[13px] text-ink-2">{t('Belum dinilai')}</span>
+  const r = hurufMutu(nilai)
+  return (
+    <span className="text-[14px] font-bold text-ink">
+      {r.huruf ? r.huruf : t('Belum Memenuhi')}
+      {panjang && r.huruf ? <span className="font-semibold text-ink-2">{' · ' + t(r.label)}</span> : null}
+    </span>
+  )
+}
+
 /* --------------------------------------------------------------------------
    Status aspek dalam TEKS SAJA.
 

@@ -61,17 +61,17 @@ export default function Login() {
         <div className="flex items-center gap-3">
           <IconLogo size={34} />
           <span className="text-lg font-extrabold tracking-tight">
-            UMN <span className="text-[var(--accent)]">SOFTSKILL</span>
+            HUMAN <span className="text-[var(--accent)]">SOFTSKILL</span>
           </span>
         </div>
 
         <div className="my-auto max-w-lg">
           <h1 className="mt-4 text-[35px] font-extrabold leading-[1.1] tracking-tight">
-            {t('Apa sih UMN Softskill itu?')}
+            {t('Apa sih HUMAN Softskill itu?')}
           </h1>
           <p className="mt-5 text-[15px] leading-relaxed text-white/70">
             {t(
-              'UMN Softskill merupakan sistem penilaian softskill yang dirancang untuk mengevaluasi dan mengembangkan kemampuan interpersonal, keterampilan teknis, dan kompetensi lainnya pada mahasiswa Universitas Multimedia Nusantara. Diantaranya ada tiga penilaian seperti dibawah ini:'
+              'HUMAN Softskill merupakan sistem penilaian softskill yang dirancang untuk mengevaluasi dan mengembangkan kemampuan interpersonal, keterampilan teknis, dan kompetensi lainnya pada mahasiswa Universitas Multimedia Nusantara. Diantaranya ada tiga penilaian seperti dibawah ini:'
             )}
           </p>
 
@@ -110,7 +110,7 @@ export default function Login() {
 
           <div className="mb-8 flex items-center gap-2.5 text-brand-ink lg:hidden">
             <IconLogo size={28} />
-            <span className="text-[15px] font-extrabold tracking-tight text-ink">UMN SOFTSKILL</span>
+            <span className="text-[15px] font-extrabold tracking-tight text-ink">HUMAN SOFTSKILL</span>
           </div>
 
           <h2 className="text-[26px] font-extrabold tracking-tight text-ink">
@@ -134,14 +134,14 @@ export default function Login() {
                 value={form.email}
                 onChange={set('email')}
               />
-              {detected ? (
+              {/* {detected ? (
                 <p className="mt-2 text-[12.5px] font-semibold text-ink-3">
                   {t('Terdeteksi sebagai')}{' '}
                   <span className="text-brand-ink">
                     {t(LABEL_PERAN[detected] ?? 'Admin')}
                   </span>
                 </p>
-              ) : null}
+              ) : null} */}
             </div>
 
             <div>

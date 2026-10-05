@@ -12,9 +12,7 @@ import {
   StatTile,
 } from '../../components/Ui'
 import {
-  IconCheck,
   IconChevronRight,
-  IconClock,
   IconDocument,
   IconInbox,
   IconPencil,
@@ -107,16 +105,16 @@ export default function Masuk() {
     <div className="space-y-5">
       <header>
         <h1 className="text-[26px] font-extrabold tracking-tight text-ink">
-          {t('Pengumpulan masuk')}
+          {t('Data masuk')}
         </h1>
-        <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-ink-2">
+        {/* <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-ink-2">
           {t('Berkas yang dikirim mahasiswa {prodi} untuk {unit} Semester {semester}.', {
             prodi: dosen.prodi,
             unit: SUMBER[dosen.sumber]?.nama ?? dosen.sumber,
             semester: dosen.semester,
           })}{' '}
           {t('Nilai tidak pernah datang dari mahasiswa. Yang mereka kirim hanya pekerjaannya.')}
-        </p>
+        </p> */}
       </header>
 
       {/* Satu angka besar: yang masih menunggu dikerjakan. Sisanya keterangan
@@ -153,22 +151,16 @@ export default function Masuk() {
           <StatTile
             label={t('Menunggu persetujuan')}
             value={hitung.menunggu}
-            icon={IconClock}
-            tone="warning"
             hint={t('Sudah Anda usulkan, belum diputuskan Kemahasiswaan.')}
           />
           <StatTile
             label={t('Sudah tercatat')}
             value={hitung.dinilai}
-            icon={IconCheck}
-            tone="good"
             hint={t('Disetujui dan sudah masuk transkrip.')}
           />
           <StatTile
             label={t('Ditolak')}
             value={hitung.ditolak}
-            icon={IconDocument}
-            tone={hitung.ditolak ? 'critical' : 'neutral'}
             hint={t(
               hitung.ditolak ? 'Perlu Anda usulkan ulang.' : 'Belum ada usulan yang ditolak.',
             )}
@@ -250,7 +242,7 @@ export default function Masuk() {
                           {b.waktu}
                         </span>
                         {b.terlambat ? (
-                          <span className="mt-1 block text-[12px] font-bold text-[var(--warning-ink)]">
+                          <span className="mt-1 block text-[12px] font-semibold text-ink-2">
                             {t('Terlambat')}
                           </span>
                         ) : null}
